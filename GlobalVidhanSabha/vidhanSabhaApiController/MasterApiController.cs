@@ -1,4 +1,5 @@
-﻿using GlobalVidhanSabha.Models.AdminMain;
+﻿using DocumentFormat.OpenXml.EMMA;
+using GlobalVidhanSabha.Models.AdminMain;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
@@ -7,6 +8,7 @@ using System.Net.NetworkInformation;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Http;
+using VishanSabha.Services;
 
 namespace GlobalVidhanSabha.vidhanSabhaApiController
 {
@@ -21,7 +23,7 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
             _service = new AdminService();
 
         }
-
+        
         [HttpGet]
         [Route("getAllDesignation")]
         public async Task<IHttpActionResult> GetAll([FromUri] Pagination paging)
@@ -270,6 +272,15 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
         {
             try
             {
+                int? VidhansabhaId = null;
+
+                if (HttpContext.Current != null &&
+                    HttpContext.Current.Session != null &&
+                    HttpContext.Current.Session["VidhanSabhaId"] != null)
+                {
+                    VidhansabhaId = Convert.ToInt32(HttpContext.Current.Session["VidhanSabhaId"]);
+                }
+
                 var request = HttpContext.Current.Request;
 
                 bool.TryParse(request.Form["Prabhari"], out bool isPrabhari);
@@ -444,5 +455,108 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
             });
 
         }
+        [HttpGet]
+        [Route("GetAllStatePrabhari")]
+        public async Task<IHttpActionResult> GetAllStatePrabhari([FromUri] Pagination paging){
+            return await ProcessRequestAsync(async () =>
+            {
+                return await _service.GetAllStatePrabhariAsync(paging);
+
+            });
+        }
+
+        [HttpPost]
+        [Route("SaveStatePrabhari")]
+        public async Task<IHttpActionResult> SaveStatePrabhari()
+        {
+            try
+            {
+                var request = HttpContext.Current.Request;
+                int? StateId = null;
+
+                if (HttpContext.Current != null &&
+                    HttpContext.Current.Session != null &&
+                    HttpContext.Current.Session["StateId"] != null)
+                {
+                    StateId = Convert.ToInt32(HttpContext.Current.Session["StateId"]);
+                }
+
+
+                StatePrabhariModel model = new StatePrabhariModel
+                {
+                    Id = Convert.ToInt32(request["Id"]),
+                    State = Convert.ToInt32(request["State"]),
+                    PrabhariName = request["PrabhariName"],
+                    Email = request["Email"],
+                    PhoneNo = request["PhoneNo"],
+                    Category = Convert.ToInt32(request["Category"]),
+                    SubCaste = Convert.ToInt32(request["SubCaste"]),
+                    Education = request["Education"],
+                    Profession = request["Profession"],
+                    Address = request["Address"],
+                    
+                };
+
+                // Image Upload
+                if (request.Files.Count > 0)
+                {
+                    var file = request.Files["Profile"];
+
+                    if (file != null && file.ContentLength > 0)
+                    {
+                        string fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
+
+                        string path = HttpContext.Current.Server.MapPath("~/Uploads/StatePrabhari/");
+
+                        if (!Directory.Exists(path))
+                            Directory.CreateDirectory(path);
+
+                        string fullPath = Path.Combine(path, fileName);
+
+                        file.SaveAs(fullPath);
+
+                        model.Profile = fileName;
+                    }
+                }
+
+                var result = await _service.SaveStatePrabhariAsync(model);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Saved successfully",
+                    data = result
+                });
+
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+
+        [HttpDelete]
+        [Route("DeleteStatePrabhari/{id}")]
+        public async Task<IHttpActionResult> DeleteStatePrabhari(int id)
+        {
+            return await ProcessRequestAsync(async () =>
+            {
+                return await _service.DeleteStatePrabhariAsync(id);
+
+            });           
+        }
+
+        [HttpGet]
+        [Route("GetStatePrabhariById/{id}")]
+        public async Task<IHttpActionResult> GetStatePrabhariById(int id)
+        {
+            return await ProcessRequestAsync(async () =>
+            {
+                return await _service.GetStatePrabhariByIdAsync(id);
+
+            });
+        }
+
     }
-    }
+}

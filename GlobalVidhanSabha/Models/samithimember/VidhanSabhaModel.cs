@@ -10,6 +10,7 @@ namespace GlobalVidhanSabha.Models.SamithiMember
         public class SamithiMemberModel
         {
             public int? Id { get; set; }
+            public int? VidhanSabhaId { get; set; }
             public int? DesignationType { get; set; }
             public string SamithiMember { get; set; }
             public string Email { get; set; }
@@ -20,6 +21,11 @@ namespace GlobalVidhanSabha.Models.SamithiMember
             public string Profession { get; set; }
             public string Address { get; set; }
             public string ProfilePath { get; set; }
+        }
+
+        public class MemberDashboardCount
+        {
+            public int TotalMembers { get; set; }
         }
 
     }

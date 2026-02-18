@@ -82,6 +82,26 @@ namespace GlobalVidhanSabha.Models.AdminMain
 
     }
 
+    public class StatePrabhariModel
+    {
+        public int Id { get; set; }
+        public int? State { get; set; }
+        public string StateName { get; set; }
+        public string PrabhariName { get; set; }
+        public string Email { get; set; }
+        public string PhoneNo { get; set; }
+        public int? Category { get; set; }
+        public string CategoryName { get; set; }
+        public int? SubCaste { get; set; }
+        public string SubCasteName { get; set; }
+        public string Education { get; set; }
+        public string Profession { get; set; }
+        public string Profile { get; set; }
+        public string Address { get; set; }
+
+        public int? VidhansabhaId { get; set; }
+    }
+
     public class Dashboard
     {
         public int TotalVidhanSabhaCount { get; set; }

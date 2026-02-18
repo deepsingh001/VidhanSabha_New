@@ -48,10 +48,15 @@ namespace GlobalVidhanSabha.Models.AdminMain
         Task<Dashboard> GetDashboardCountsAsync();
         Task<List<KeyValuePair<string, int>>> GetStateWiseVidhanSabhaChartAsync();
         Task<List<KeyValuePair<string, int>>> GetDistrictWiseVidhanSabhaChartAsync();
-
         Task<List<designationMain>> GetDesignationTypeAsync();
 
+        //use stste prabhari interface
+        Task<PagedResult<StatePrabhariModel>> GetAllStatePrabhariAsync(Pagination paging);
+        Task<int> SaveStatePrabhariAsync(StatePrabhariModel model);
+        Task<StatePrabhariModel> GetStatePrabhariByIdAsync(int id);
 
+        //Task UpdateAsync(StatePrabhariModel model);
+        Task<bool> DeleteStatePrabhariAsync(int id);
     }
 
 

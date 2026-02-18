@@ -552,9 +552,7 @@ namespace GlobalVidhanSabha.Models.AdminMain
             {
           
                 throw new Exception($"Error fetching districts for StateId {stateId}", ex);
-            }
-            
-
+            }           
             return list;
         }
 
@@ -617,7 +615,7 @@ namespace GlobalVidhanSabha.Models.AdminMain
             }
             catch (Exception ex)
             {
-                throw new Exception("Error saving VidhanSabha: " + ex.Message);
+                throw new Exception(ex.Message);
             }
         }
 
@@ -1163,8 +1161,323 @@ namespace GlobalVidhanSabha.Models.AdminMain
             return list;
         }
 
+        //State Prabhari Service
+
+        // STATE PRABHARI SERVICE
+        public async Task<PagedResult<StatePrabhariModel>> GetAllStatePrabhariAsync(Pagination paging)
+        {
+            int totalRecords = 0;
+            var list = new List<StatePrabhariModel>();
+
+            try
+            {
+                using (SqlConnection con = new SqlConnection(conn))
+                using (SqlCommand cmd = new SqlCommand("sp_StatePrabhari", con))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    cmd.Parameters.AddWithValue("@Action", "GETALLSTATEPRABHARI");
+                    cmd.Parameters.AddWithValue("@PageNumber", paging.PageNumber);
+                    cmd.Parameters.AddWithValue("@PageSize", paging.Items);
+                    cmd.Parameters.AddWithValue("@Search",
+                        string.IsNullOrWhiteSpace(paging.search)
+                        ? (object)DBNull.Value
+                        : paging.search);
+
+                    await con.OpenAsync();
+
+                    using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await dr.ReadAsync())
+                        {
+                            // Total count
+                            if (totalRecords == 0 && dr["TotalCount"] != DBNull.Value)
+                                totalRecords = Convert.ToInt32(dr["TotalCount"]);
+
+                            list.Add(new StatePrabhariModel
+                            {
+                                Id = Convert.ToInt32(dr["Id"]),
+
+                                // Stored procedure me column name "state" hai
+                                State = dr["state"] != DBNull.Value
+                                        ? Convert.ToInt32(dr["state"])
+                                        : (int?)null,
+
+                                StateName = dr["StateName"] as string,
+
+                                PrabhariName = dr["PrabhariName"] as string,
+
+                                Email = dr["Email"] as string,
+
+                                PhoneNo = dr["PhoneNo"] as string,
+
+                                Category = dr["Category"] != DBNull.Value
+                                            ? Convert.ToInt32(dr["Category"])
+                                            : (int?)null,
+
+                                CategoryName = dr["CategoryName"] as string,
+
+                                SubCaste = dr["SubCaste"] != DBNull.Value
+                                            ? Convert.ToInt32(dr["SubCaste"])
+                                            : (int?)null,
+
+                                SubCasteName = dr["SubCasteName"] as string,
+
+                                Address = dr["Address"] as string,
+                                Profession = dr["Profession"] as string,
+                                Education = dr["Education"] as string,
 
 
+                            });
+                        }
+                    }
+                }
+
+                return new PagedResult<StatePrabhariModel>
+                {
+                    data = list,
+                    totalRecords = totalRecords
+                };
+            }
+            catch (SqlException ex)
+            {
+                throw new Exception("Database error while fetching StatePrabhari", ex);
+            }
+        }
+
+
+        public async Task<StatePrabhariModel> GetStatePrabhariByIdAsync(int id)
+        {
+            StatePrabhariModel model = null;
+
+            try
+            {
+                using (SqlConnection con = new SqlConnection(conn))
+                using (SqlCommand cmd = new SqlCommand("sp_StatePrabhari", con))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    cmd.Parameters.AddWithValue("@Action", "GETBYID");
+                    cmd.Parameters.AddWithValue("@Id", id);
+
+                    await con.OpenAsync();
+
+                    using (SqlDataReader reader = await cmd.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            model = new StatePrabhariModel
+                            {
+                                Id = Convert.ToInt32(reader["Id"]),
+                                State = Convert.ToInt32(reader["State"]),
+                                PrabhariName = reader["PrabhariName"]?.ToString(),
+                                Email = reader["Email"]?.ToString(),
+                                PhoneNo = reader["PhoneNo"]?.ToString(),
+                                Category = Convert.ToInt32(reader["Category"]),
+                                SubCaste = Convert.ToInt32(reader["SubCaste"]),
+                                Education = reader["Education"]?.ToString(),
+                                Profession = reader["Profession"]?.ToString(),
+                                Profile = reader["Profile"]?.ToString(),
+                                Address = reader["Address"]?.ToString()
+                            };
+                        }
+                    }
+                }
+            }
+            catch (SqlException sqlEx)
+            {
+                throw new Exception($"Database error while fetching StatePrabhari with Id={id}", sqlEx);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Unexpected error while fetching StatePrabhari with Id={id}", ex);
+            }
+
+            return model;
+        }
+
+
+        public async Task<int> SaveStatePrabhariAsync(StatePrabhariModel model)
+        {
+            try
+            {
+                using (SqlConnection con = new SqlConnection(conn))
+                using (SqlCommand cmd = new SqlCommand("sp_StatePrabhari", con))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    string generatedPassword = null;
+
+                    bool isNew = model.Id == 0;
+
+                    if (isNew)
+                    {
+                        generatedPassword = PasswordGenerator.GeneratePassword(
+                            model.PrabhariName,
+                            model.PhoneNo
+                        );
+                    }
+
+                    cmd.Parameters.AddWithValue("@Action",
+                        isNew ? "ADD" : "UPDATE");
+
+                    cmd.Parameters.AddWithValue("@Id", model.Id);
+
+                    cmd.Parameters.AddWithValue("@State", (object)model.State ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@PrabhariName", (object)model.PrabhariName ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Email", (object)model.Email ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@PhoneNo", (object)model.PhoneNo ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Category", (object)model.Category ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@SubCaste", (object)model.SubCaste ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Education", (object)model.Education ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Profession", (object)model.Profession ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Profile", (object)model.Profile ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Address", (object)model.Address ?? DBNull.Value);
+
+                    // LOGIN PARAMETERS
+                    cmd.Parameters.AddWithValue("@UserName",
+                        (object)model.Email ?? DBNull.Value);
+
+                    cmd.Parameters.AddWithValue("@Password",
+                        (object)generatedPassword ?? DBNull.Value);
+
+                    cmd.Parameters.AddWithValue("@Role",
+                        "StatePrabhari");
+
+                    await con.OpenAsync();
+
+                    int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+                    // Send email only for new user
+                    if (isNew && newId > 0)
+                    {
+                        await EmailService.SendLoginEmailAsync(
+                            model.Email,
+                            model.Email,
+                            generatedPassword
+                        );
+                    }
+
+                    return newId;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
+        }
+
+
+
+        //public async Task<int> SaveStatePrabhariAsync(StatePrabhariModel model)
+        //{
+        //    try
+        //    {
+        //        using (var con = new SqlConnection(conn))
+        //        using (var cmd = new SqlCommand("sp_StatePrabhari", con))
+        //        {
+        //            cmd.CommandType = CommandType.StoredProcedure;
+
+        //            bool isNew = model.Id == 0;
+
+        //            // Determine action
+        //            if (isNew)
+        //            {
+        //                cmd.Parameters.AddWithValue("@Action", "ADD");
+        //            }
+        //            else
+        //            {
+        //                cmd.Parameters.AddWithValue("@Action", "UPDATE");
+        //                cmd.Parameters.AddWithValue("@Id", model.Id);
+        //            }
+
+        //            // Parameters
+        //            cmd.Parameters.AddWithValue("@PrabhariName", model.PrabhariName ?? "");
+        //            cmd.Parameters.AddWithValue("@Email", model.Email ?? "");
+        //            cmd.Parameters.AddWithValue("@PhoneNo", model.PhoneNo ?? "");
+        //            cmd.Parameters.AddWithValue("@State", model.State ?? (object)DBNull.Value);
+        //            cmd.Parameters.AddWithValue("@Category", model.Category ?? (object)DBNull.Value);
+        //            cmd.Parameters.AddWithValue("@SubCaste", model.SubCaste ?? (object)DBNull.Value);
+        //            cmd.Parameters.AddWithValue("@Education", model.Education ?? (object)DBNull.Value);
+        //            cmd.Parameters.AddWithValue("@Profession", model.Profession ?? (object)DBNull.Value);
+        //            cmd.Parameters.AddWithValue("@Profile", model.Profile ?? (object)DBNull.Value);
+        //            cmd.Parameters.AddWithValue("@Address", model.Address ?? (object)DBNull.Value);
+
+        //            await con.OpenAsync();
+
+        //            object result = await cmd.ExecuteScalarAsync();
+
+        //            int newId = isNew
+        //                ? (result != null && result != DBNull.Value ? Convert.ToInt32(result) : 0)
+        //                : model.Id;
+
+        //            // ✅ SEND EMAIL ONLY WHEN NEW USER CREATED
+        //            if (isNew)
+        //            {
+        //                string username = model.Email;
+
+        //                // Generate Password
+        //                string password = PasswordGenerator.GeneratePassword(
+        //                    model.PrabhariName,
+        //                    model.PhoneNo
+        //                );
+
+        //                // Send Email
+        //                await EmailService.SendLoginEmailAsync(
+        //                    model.Email,
+        //                    username,
+        //                    password
+        //                );
+        //            }
+
+        //            return newId;
+        //        }
+        //    }
+        //    catch (SqlException sqlEx)
+        //    {
+        //        string action = model.Id > 0 ? "updating" : "adding";
+        //        throw new Exception($"Database error while {action} StatePrabhari: {sqlEx.Message}", sqlEx);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        string action = model.Id > 0 ? "updating" : "adding";
+        //        throw new Exception($"Unexpected error while {action} StatePrabhari: {ex.Message}", ex);
+        //    }
+        //}
+
+
+
+
+        public async Task<bool> DeleteStatePrabhariAsync(int id)
+        {
+            try
+            {
+                using (var con = new SqlConnection(conn))
+                using (var cmd = new SqlCommand("sp_StatePrabhari", con))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    cmd.Parameters.AddWithValue("@Action", "DELETE");
+                    cmd.Parameters.AddWithValue("@Id", id);
+
+                    await con.OpenAsync();
+
+                    int rowsAffected = await cmd.ExecuteNonQueryAsync();
+
+                    return rowsAffected > 0;
+                }
+            }
+            catch (SqlException sqlEx)
+            {
+                // database related error
+                throw new Exception($"Database error while deleting StatePrabhari with Id={id}", sqlEx);
+            }
+            catch (Exception ex)
+            {
+                // general error
+                throw new Exception($"Unexpected error while deleting StatePrabhari with Id={id}", ex);
+            }
+        }
     }
 }
 

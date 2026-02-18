@@ -1,18 +1,20 @@
-﻿using GlobalVidhanSabha.Models.AdminMain;
+﻿using DocumentFormat.OpenXml.Office2010.Excel;
+using GlobalVidhanSabha.Models.AdminMain;
 using GlobalVidhanSabha.Models.SamithiMember;
 using System;
-using System.Threading.Tasks;
-using System.Web.Http;
 using System.Data.SqlClient;
 using System.IO;
 using System.Net.NetworkInformation;
+using System.Threading.Tasks;
 using System.Web;
-
+using System.Web.Http;
+using System.Web.SessionState;
 
 using static GlobalVidhanSabha.Models.SamithiMember.VidhanSabhaModel;
 
 [RoutePrefix("api/samithimember")]
-public class SamithiMemberController : BaseApiController
+
+public class SamithiMemberController : BaseApiController, IRequiresSessionState
 {
     private readonly ISamithiMemberService _service;
 
@@ -20,16 +22,7 @@ public class SamithiMemberController : BaseApiController
     {
         _service = new SamithiMemberService();
     }
-    //[HttpPost]
-    //[Route("add")]
-    //public async Task<IHttpActionResult> Add([FromBody] SamithiMemberModel member)
-    //{
-    //    return await ProcessCreateOrUpdateAsync(async () =>
-    //    {
-    //        return await _service.AddMemberAsync(member);
-    //    });
-    //}
-
+    
     private int? GetInt(string value)
     {
         if (int.TryParse(value, out int result))
@@ -46,6 +39,15 @@ public class SamithiMemberController : BaseApiController
         {
             var request = HttpContext.Current.Request;
 
+            int? VidhansabhaId = null;
+
+            if (HttpContext.Current != null &&
+                HttpContext.Current.Session != null &&
+                HttpContext.Current.Session["VidhanSabhaId"] != null)
+            {
+                VidhansabhaId = Convert.ToInt32(HttpContext.Current.Session["VidhanSabhaId"]);
+            }
+
             SamithiMemberModel model = new SamithiMemberModel
             {
                 Id = GetInt(request.Form["Id"]),
@@ -57,7 +59,9 @@ public class SamithiMemberController : BaseApiController
                 Caste = GetInt(request.Form["Caste"]),
                 Education = request.Form["Education"],
                 Profession = request.Form["Profession"],
-                Address = request.Form["Address"]
+                Address = request.Form["Address"],
+
+                VidhanSabhaId = VidhansabhaId
             };
 
             // FILE UPLOAD
@@ -117,10 +121,18 @@ public class SamithiMemberController : BaseApiController
     [Route("getall")]
     public async Task<IHttpActionResult> GetAll()
     {
+        int? vidhanSabhaId = null;
+
+        if (HttpContext.Current != null &&
+            HttpContext.Current.Session != null &&
+            HttpContext.Current.Session["VidhanSabhaId"] != null)
+        {
+            vidhanSabhaId = Convert.ToInt32(HttpContext.Current.Session["VidhanSabhaId"]);
+        }
 
         return await ProcessRequestAsync(async () =>
         {
-            return await _service.GetAllMembersAsync();
+            return await _service.GetAllMembersAsync(vidhanSabhaId);
         });
     }
   
@@ -135,4 +147,27 @@ public class SamithiMemberController : BaseApiController
             return await _service.GetMemberByIdAsync(id);
         });
     }
+
+    [HttpGet]
+    [Route("dashboardcount")]
+    public async Task<IHttpActionResult> DashboardCount()
+    {
+        
+            int? vidhanSabhaId = null;
+
+            if (HttpContext.Current != null &&
+                HttpContext.Current.Session != null &&
+                HttpContext.Current.Session["VidhanSabhaId"] != null)
+            {
+                vidhanSabhaId = Convert.ToInt32(HttpContext.Current.Session["VidhanSabhaId"]);
+            }
+
+            return await ProcessRequestAsync(async () =>
+            {
+                return await _service.GetDashboardCountAsync(vidhanSabhaId);
+            });
+        
+       
+    }
+
 }

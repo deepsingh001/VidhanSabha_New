@@ -222,7 +222,7 @@
     <Compile Include="Controllers\ExportController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\MasterController.cs" />
-    <Compile Include="Controllers\PrabhariController.cs" />
+    <Compile Include="Controllers\StatePrabhariController.cs" />
     <Compile Include="Controllers\SectorController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
@@ -4693,14 +4693,16 @@
     <Content Include="Views\Home\events.cshtml" />
     <Content Include="Views\Home\gallery.cshtml" />
     <Content Include="Views\Home\yojana.cshtml" />
-    <Content Include="Views\prabhari\AddSamithiMember.cshtml" />
-    <Content Include="Views\prabhari\PrabhariDashboard.cshtml" />
+    <Content Include="Views\StatePrabhari\AddSamithiMember.cshtml" />
+    <Content Include="Views\StatePrabhari\PrabhariDashboard.cshtml" />
     <Content Include="Views\master\addDesignation.cshtml" />
     <Content Include="Views\master\addDistrictCount.cshtml" />
     <Content Include="Views\master\addStateCount.cshtml" />
     <Content Include="Views\master\MasterDashboard.cshtml" />
     <Content Include="Views\master\VidhanSabhaRagiter.cshtml" />
     <Content Include="Views\Shared\_PrabhariLayout.cshtml" />
+    <Content Include="Views\master\AddStatePrabhari.cshtml" />
+    <Content Include="Views\StatePrabhari\VidhanSabhaRagiter.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

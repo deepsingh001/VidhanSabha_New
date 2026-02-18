@@ -156,7 +156,13 @@ namespace VishanSabha.Services.Auth
                                 Password = reader["Password"].ToString(),
                                 Role = reader["Role"].ToString(),
                                 Status = Convert.ToInt32(reader["Status"]),
-                                VidhanSabhaId =reader["VidhanSabhaId"] !=DBNull.Value? Convert.ToInt32(reader["VidhanSabhaId"]):(int?)null
+                                VidhanSabhaId =reader["VidhanSabhaId"] !=DBNull.Value? Convert.ToInt32(reader["VidhanSabhaId"]):(int?)null,
+
+                        //         StatePrabhariId =
+                        //Convert.ToInt32(reader["StatePrabhariId"]),
+
+                        //        StateId =
+                        //Convert.ToInt32(reader["StateId"])
                             };
                         }
                     }

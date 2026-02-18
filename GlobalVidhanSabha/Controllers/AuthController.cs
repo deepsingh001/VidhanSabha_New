@@ -36,6 +36,7 @@ namespace VishanSabha.Controllers
 
                 Session["Contact"] = user.Contact;
                 Session["VidhanSabhaId"] = user.VidhanSabhaId;
+            
                 string contact = Session["Contact"].ToString();
                 int VidhanSabhaId = Convert.ToInt32(Session["VidhanSabhaId"]);
                 if(user.Role== "SuperAdmin")
@@ -48,10 +49,10 @@ namespace VishanSabha.Controllers
                 //     TempData["LoginSuccess"] = $"Welcome back, {user.Contact}!";
                 //     return RedirectToAction("Dashboard", "Admin", new { loginSuccess = 1 });
                 // }
-                else if (user.Role == "Prabhari")
+                else if (user.Role == "StatePrabhari")
                 {
                     TempData["LoginSuccess"] = $"Welcome back, {user.Contact}!";
-                    return RedirectToAction("PrabhariDashboard", "prabhari", new { loginSuccess = 1 });
+                    return RedirectToAction("PrabhariDashboard", "StatePrabhari", new { loginSuccess = 1 });
                 }
                 else if (user.Role == "SectorIncharge")
                 {

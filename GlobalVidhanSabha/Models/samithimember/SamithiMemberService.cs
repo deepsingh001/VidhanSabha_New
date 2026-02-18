@@ -1,4 +1,5 @@
-﻿using GlobalVidhanSabha.Models.SamithiMember;
+﻿using DocumentFormat.OpenXml.EMMA;
+using GlobalVidhanSabha.Models.SamithiMember;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -43,6 +44,8 @@ public class SamithiMemberService : ISamithiMemberService
             cmd.Parameters.AddWithValue("@Address", (object)member.Address ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@ProfilePath", (object)member.ProfilePath ?? DBNull.Value);
 
+            cmd.Parameters.AddWithValue("@Id", member.VidhanSabhaId);
+
             await con.OpenAsync();
 
             return await cmd.ExecuteNonQueryAsync();
@@ -72,7 +75,7 @@ public class SamithiMemberService : ISamithiMemberService
         }
     }
 
-    public async Task<List<SamithiMemberModel>> GetAllMembersAsync()
+    public async Task<List<SamithiMemberModel>> GetAllMembersAsync(int? vidhanSabhaId)
     {
         var members = new List<SamithiMemberModel>();
         try
@@ -82,6 +85,8 @@ public class SamithiMemberService : ISamithiMemberService
             {
                 cmd.CommandType = CommandType.StoredProcedure;
                 cmd.Parameters.AddWithValue("@Action", "GETALL");
+                cmd.Parameters.AddWithValue("@VidhanSabhaId",
+              vidhanSabhaId.HasValue ? (object)vidhanSabhaId.Value : DBNull.Value);
 
                 await con.OpenAsync();
                 using (var reader = await cmd.ExecuteReaderAsync())
@@ -100,7 +105,8 @@ public class SamithiMemberService : ISamithiMemberService
                             Education = reader["Education"].ToString(),
                             Profession = reader["Profession"].ToString(),
                             Address = reader["Address"].ToString(),
-                            ProfilePath = reader["ProfilePath"].ToString()
+                            ProfilePath = reader["ProfilePath"].ToString(),
+                            VidhanSabhaId = reader["VidhanSabhaId"] as int?
                         });
                     }
                 }
@@ -154,4 +160,41 @@ public class SamithiMemberService : ISamithiMemberService
             throw new Exception("Error fetching Samithi member by ID: " + ex.Message);
         }
     }
+
+    public async Task<MemberDashboardCount> GetDashboardCountAsync(int? vidhanSabhaId)
+    {
+        MemberDashboardCount dashboard = new MemberDashboardCount();
+
+        try
+        {
+            using (SqlConnection con = new SqlConnection(conn))
+            using (SqlCommand cmd = new SqlCommand("sp_ManageSamithiMember", con))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                cmd.Parameters.AddWithValue("@Action", "DashboardCount");
+                cmd.Parameters.AddWithValue("@VidhanSabhaId", (object)vidhanSabhaId ?? DBNull.Value);
+
+                await con.OpenAsync();
+
+                using (SqlDataReader reader = await cmd.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        dashboard.TotalMembers = reader["TotalMembers"] != DBNull.Value
+                            ? Convert.ToInt32(reader["TotalMembers"])
+                            : 0;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Error fetching dashboard count", ex);
+        }
+
+        return dashboard;
+    }
+
+
 }

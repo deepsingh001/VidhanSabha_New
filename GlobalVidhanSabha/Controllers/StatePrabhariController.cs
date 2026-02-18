@@ -7,11 +7,16 @@ using VishanSabha.ActionFilter;
 
 namespace GlobalVidhanSabha.Controllers
 {
-    [Authorize(Roles = "Prabhari")]
+    [Authorize(Roles = "StatePrabhari")]
  
-    public class PrabhariController : Controller
+    public class StatePrabhariController : Controller
     {
         // GET: Prabhari
+
+        public ActionResult VidhanSabhaRagiter()
+        {
+            return View();
+        }
         public ActionResult AddSamithiMember()
         {
             return View();

@@ -1,0 +1,622 @@
+﻿@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+
+    .bg-navy {
+        background: #001a35 !important;
+    }
+
+    #designationModal .modal-dialog {
+        max-width: 500px;
+    }
+
+    #designationModal .modal-content {
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    .form-check-input:checked {
+        background-color: #002147 !important;
+        border-color: #002147 !important;
+    }
+
+    .form-check-input:focus {
+        box-shadow: 0 0 0 0.15rem rgba(0, 33, 71, 0.25) !important;
+        border-color: #002147 !important;
+    }
+
+    .custom-modal {
+        max-width: 750px;
+        margin-top: 65px;
+    }
+    /*#vidhanSabhaModal .modal-content {
+        max-height: 85vh;*/ /* 80vh se kam kar diya */
+    /*overflow-y: auto;
+    }*/
+
+</style>
+
+<div class="card border-0 shadow-sm rounded-3 ">
+    <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-bold text-navy">Vidhan Sabha Registration</h6>
+        <button class="btn btn-sm btn-navy py-1 px-3" onclick="openVidhanSabhaModal()">
+            <i class="bi bi-plus-lg me-1"></i>Add Vidhan Sabha
+        </button>
+    </div>
+    <div class="card-body p-2">
+        <div class="table-responsive">
+            <table id="vidhanSabhaTable"
+                   class="table table-hover table-bordered table-sm table-compact-custom w-100">
+
+                <thead>
+                    <tr>
+
+                        <th class="text-center">S.No</th>
+                        <th>State</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Education</th>
+                        <th>Address</th>
+                        <th>Profession</th>
+                        <th class="text-center">Actions</th>
+
+                    </tr>
+                </thead>
+
+                <tbody></tbody>
+
+            </table>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="vidhanSabhaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog custom-modal">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-navy text-white py-2 px-3">
+                <h6 class="modal-title fw-bold" id="modalTitle">Vidhan Sabha Registration</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3">
+                <form id="vidhanSabhaForm" enctype="multipart/form-data">
+                    <input type="hidden" id="Id" value="0">
+
+                    <div class="row g-2 mb-2">
+
+                        <!-- State -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Select State</label>
+                            <select class="form-select form-select-sm" id="StateId" required>
+                                <option value="">-- Select State --</option>
+                            </select>
+                        </div>
+
+
+                        <!-- Prabhari Name -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">State Prabhari Name</label>
+                            <input type="text" class="form-control form-control-sm" id="Name" required>
+                        </div>
+
+                        <!-- Phone -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Phone No</label>
+                            <input type="text" class="form-control form-control-sm" id="PhoneNo" required>
+                        </div>
+
+                        <!-- Gmail -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Gmail</label>
+                            <input type="email" class="form-control form-control-sm" id="Gmail" required>
+                        </div>
+
+                        <!-- Category -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Category</label>
+                            <select class="form-select form-select-sm" id="Category" required>
+                                <option value="">--Select Category--</option>
+                            </select>
+                        </div>
+
+                        <!-- SubCaste -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Sub Caste</label>
+                            <select class="form-select form-select-sm" id="Caste" required>
+                                <option value="">--Select Sub Caste--</option>
+                            </select>
+                        </div>
+
+                        <!-- Education -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Education</label>
+                            <input type="text" class="form-control form-control-sm" id="Education">
+                        </div>
+
+                        <!-- Profession -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Profession</label>
+                            <input type="text" class="form-control form-control-sm" id="Profession">
+                        </div>
+
+                        <!-- Profile -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Profile</label>
+                            <input type="file" class="form-control form-control-sm" id="Profile">
+                        </div>
+
+                        <!-- Address -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Address</label>
+                            <textarea class="form-control form-control-sm" id="Address"></textarea>
+                        </div>
+
+                    </div>
+
+                    <div class="d-flex gap-2 pt-2">
+                        <button type="submit" class="btn btn-navy btn-sm flex-grow-1 fw-bold py-2 shadow-sm">
+                            <i class="bi bi-cloud-arrow-up me-1"></i> Save Registration
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="~/Scripts/jquery-3.7.0.min.js"></script>
+
+<script>
+
+    $(document).ready(function () {
+
+        loadStates();
+        loadCategories();
+
+        // Category change → load SubCaste
+        $('#Category').change(function () {
+
+            const categoryId = $(this).val();
+
+            if (categoryId) {
+                loadSubCaste(categoryId);
+            }
+            else {
+                $('#Caste').html('<option value="">--Select Sub Caste--</option>');
+            }
+
+        });
+
+    });
+
+
+    // Open Modal
+    function openVidhanSabhaModal() {
+
+        $('#vidhanSabhaForm')[0].reset();
+        $('#Id').val(0);
+        $('#modalTitle').text("Add Vidhan Sabha");
+
+        new bootstrap.Modal(document.getElementById('vidhanSabhaModal')).show();
+    }
+
+
+    // Load States
+    function loadStates() {
+
+        $.get('/api/Admin/getAllStateCount', function (res) {
+
+            let dropdown = $('#StateId');
+            dropdown.html('<option value="">-- Select State --</option>');
+
+            if (res?.success && res?.data?.data) {
+
+                $.each(res.data.data, function (_, state) {
+
+                    dropdown.append(`<option value="${state.StateId}">
+                                        ${state.StateName}
+                                     </option>`);
+
+                });
+
+            }
+
+        }).fail(function (err) {
+
+            console.log("State load error", err);
+
+        });
+
+    }
+
+
+    // Load Categories
+    function loadCategories() {
+
+        $.get('/api/Admin/GetCasteCategory', function (res) {
+
+            let dropdown = $('#Category');
+            dropdown.html('<option value="">--Select Category--</option>');
+
+            if (res?.success && res?.data?.data) {
+
+                $.each(res.data.data, function (_, item) {
+
+                    dropdown.append(`<option value="${item.Id}">
+                                        ${item.Name}
+                                     </option>`);
+
+                });
+
+            }
+
+        }).fail(function (err) {
+
+            console.log("Category load error", err);
+
+        });
+
+    }
+
+
+    // Load SubCaste
+    function loadSubCaste(categoryId) {
+
+        $.get('/api/Admin/GetSubCasteByCategory', { categoryId: categoryId }, function (res) {
+
+            let dropdown = $('#Caste');
+            dropdown.html('<option value="">--Select Sub Caste--</option>');
+
+            if (res?.success && res?.data?.data) {
+
+                $.each(res.data.data, function (_, item) {
+
+                    dropdown.append(`<option value="${item.Id}">
+                                        ${item.Name}
+                                     </option>`);
+
+                });
+
+            }
+
+        }).fail(function (err) {
+
+            console.log("SubCaste load error", err);
+
+        });
+
+    }
+
+</script>
+
+<script>
+    $(document).ready(function () {
+
+        // form submit
+        $('#vidhanSabhaForm').submit(function (e) {
+
+            e.preventDefault();
+
+            saveStatePrabhari();
+
+        });
+
+    });
+
+
+    // Save State Prabhari using FormData
+    function saveStatePrabhari() {
+
+        var formData = new FormData();
+
+        formData.append("Id", $('#Id').val());
+        formData.append("State", $('#StateId option:selected').val());
+        formData.append("PrabhariName", $('#Name').val());
+        formData.append("Email", $('#Gmail').val());
+        formData.append("PhoneNo", $('#PhoneNo').val());
+        formData.append("Category", $('#Category option:selected').val());
+        formData.append("SubCaste", $('#Caste option:selected').val());
+        formData.append("Education", $('#Education').val());
+        formData.append("Profession", $('#Profession').val());
+        formData.append("Address", $('#Address').val());
+
+        // Image
+        var file = $('#Profile')[0].files[0];
+
+        if (file != null) {
+            formData.append("Profile", file);
+        }
+
+        $.ajax({
+
+            url: '/api/Admin/SaveStatePrabhari',
+            type: 'POST',
+            data: formData,
+
+            processData: false,
+            contentType: false,
+
+            success: function (res) {
+
+                if (res.success) {
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success',
+                        text: res.message,
+                        confirmButtonColor: '#001a35'
+                    });
+
+                    $('#vidhanSabhaForm')[0].reset();
+
+                    $('#vidhanSabhaModal').modal('hide');
+
+                    loadStatePrabhariData(); // reload list if exists
+                }
+                else {
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: res.message,
+                        confirmButtonColor: '#d33'
+                    });
+
+                }
+
+            },
+            error: function (err) {
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: err.responseJSON?.Message || "Error saving data",
+                    confirmButtonColor: '#d33'
+                });
+
+            }
+
+        });
+
+    }
+
+</script>
+
+<script>
+
+    let currentPage = 1;
+    let pageSize = 10;
+    let totalRecords = 0;
+
+    $(document).ready(function () {
+
+        loadStatePrabhariData();
+        deleteStatePrabhari(id);
+        editStatePrabhari(id);
+
+    });
+
+    let vidhanSabhaDataTable;
+
+    function loadStatePrabhariData() {
+
+        // destroy if already initialized
+        if ($.fn.DataTable.isDataTable('#vidhanSabhaTable')) {
+
+            $('#vidhanSabhaTable').DataTable().clear().destroy();
+
+        }
+
+        vidhanSabhaDataTable = initPaginatedTable({
+
+            apiUrl: '/api/Admin/GetAllStatePrabhari',
+
+            tableSelector: '#vidhanSabhaTable',
+
+            pageSizeSelector: '#pageSize', // optional
+
+            columns: [
+
+                {
+                    data: null,
+                    className: "text-center",
+                    render: function (data, type, row, meta) {
+
+                        return meta.row + 1;
+
+                    }
+                },
+
+                { data: "StateName" },
+
+                { data: "PrabhariName" },
+
+                { data: "Email" },
+
+                { data: "PhoneNo" },
+
+                { data: "Education" },
+
+                { data: "Address" },
+
+                { data: "Profession" },
+
+                {
+                    data: "Id",
+                    className: "text-center",
+                    render: function (id, type, row) {
+
+                        return `
+
+                        <button class="btn btn-sm btn-light border p-1 px-2 me-1"
+                            onclick="editStatePrabhari(${id})">
+
+                            <i class="bi bi-pencil-square text-primary"></i>
+
+                        </button>
+
+                        <button class="btn btn-sm btn-light border p-1 px-2"
+                            onclick="deleteStatePrabhari(${id})">
+
+                            <i class="bi bi-trash text-danger"></i>
+
+                        </button>
+
+                    `;
+
+                    }
+                }
+
+            ]
+
+        });
+
+    }
+
+    function deleteStatePrabhari(id) {
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You want to delete this record",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#001a35',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it!'
+        })
+            .then((result) => {
+
+                if (result.isConfirmed) {
+
+                    $.ajax({
+                        url: '/api/Admin/DeleteStatePrabhari/' + id,
+                        type: 'DELETE',
+
+                        success: function (res) {
+
+                            if (res.success) {
+
+                                Swal.fire(
+                                    'Deleted!',
+                                    res.message,
+                                    'success'
+                                );
+
+                                loadStatePrabhariData(); // reload table
+                            }
+                            else {
+
+                                Swal.fire(
+                                    'Error!',
+                                    res.message,
+                                    'error'
+                                );
+
+                            }
+                        },
+
+                        error: function () {
+
+                            Swal.fire(
+                                'Error!',
+                                'Delete failed',
+                                'error'
+                            );
+
+                        }
+                    });
+
+                }
+
+            });
+
+    }
+
+    function editStatePrabhari(id) {
+
+        // open modal first
+        $('#vidhanSabhaForm')[0].reset();
+        $('#Id').val(id);
+        $('#modalTitle').text("Edit State Prabhari");
+
+        var modal = new bootstrap.Modal(document.getElementById('vidhanSabhaModal'));
+        modal.show();
+
+        // call API
+        $.ajax({
+
+            url: '/api/Admin/GetStatePrabhariById/' + id,
+            type: 'GET',
+
+            success: function (res) {
+
+                if (res.success && res.data) {
+
+                    let data = res.data;
+
+                    // bind fields
+                    $('#Id').val(data.Id);
+                    $('#Name').val(data.PrabhariName);
+                    $('#Gmail').val(data.Email);
+                    $('#PhoneNo').val(data.PhoneNo);
+                    $('#Education').val(data.Education);
+                    $('#Profession').val(data.Profession);
+                    $('#Address').val(data.Address);
+
+                    // bind state dropdown
+                    $('#StateId').val(data.State);
+
+                    // bind category dropdown
+                    $('#Category').val(data.Category);
+
+                    // load subcaste first, then select value
+                    loadSubCaste(data.Category);
+
+                    setTimeout(function () {
+
+                        $('#Caste').val(data.SubCaste);
+
+                    }, 300);
+
+                    // show profile preview optional
+                    if (data.Profile) {
+
+                        console.log("Profile:", data.Profile);
+
+                    }
+
+                }
+                else {
+
+                    Swal.fire(
+                        'Error',
+                        'Failed to fetch data',
+                        'error'
+                    );
+
+                }
+
+            },
+
+            error: function () {
+
+                Swal.fire(
+                    'Error',
+                    'Error loading data',
+                    'error'
+                );
+
+            }
+
+        });
+
+    }
+
+
+
+</script>

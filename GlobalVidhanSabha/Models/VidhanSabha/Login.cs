@@ -15,6 +15,9 @@ namespace VishanSabha.Models
 
         public int Status { get; set; }
         public int? VidhanSabhaId { get; set; }
+        public int StatePrabhariId { get; set; }
+
+        public int StateId { get; set; }
     }
 
     public class Location
