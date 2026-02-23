@@ -15,6 +15,16 @@ namespace GlobalVidhanSabha.Controllers
 
         public ActionResult VidhanSabhaRagiter()
         {
+            var stateId = Session["StateId"];
+            Console.WriteLine("my id", stateId);
+
+            if (stateId == null)
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            // ✅ ADD THIS LINE
+            ViewBag.StateId = stateId;
             return View();
         }
         public ActionResult AddSamithiMember()
@@ -24,6 +34,16 @@ namespace GlobalVidhanSabha.Controllers
         public ActionResult PrabhariDashboard()
         {
             return View();
+
         }
+              public ActionResult ShowDistrictCount()
+        {
+            int stateId = Convert.ToInt32(Session["StateId"]);
+
+            ViewBag.StateId = stateId;
+
+            return View();
+        }
+
     }
 }

@@ -36,7 +36,8 @@ namespace VishanSabha.Controllers
 
                 Session["Contact"] = user.Contact;
                 Session["VidhanSabhaId"] = user.VidhanSabhaId;
-            
+                Session["Role"] = user.Role;
+
                 string contact = Session["Contact"].ToString();
                 int VidhanSabhaId = Convert.ToInt32(Session["VidhanSabhaId"]);
                 if(user.Role== "SuperAdmin")
@@ -52,6 +53,7 @@ namespace VishanSabha.Controllers
                 else if (user.Role == "StatePrabhari")
                 {
                     TempData["LoginSuccess"] = $"Welcome back, {user.Contact}!";
+                    Session["StateId"] = user.StateId;
                     return RedirectToAction("PrabhariDashboard", "StatePrabhari", new { loginSuccess = 1 });
                 }
                 else if (user.Role == "SectorIncharge")

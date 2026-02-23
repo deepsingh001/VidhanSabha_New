@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DocumentFormat.OpenXml.Wordprocessing;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -36,7 +37,7 @@ namespace GlobalVidhanSabha.Models.AdminMain
 
         //VidhanSabhaRagitertration
         Task<int> SaveVidhanSabhaRegistrationAsync(VidhanSabhaRegister model);
-        Task<PagedResult<VidhanSabhaRegister>> GetAllVidhanSabhaAsync(Pagination paging, bool? Prabhari = null);
+        Task<PagedResult<VidhanSabhaRegister>> GetAllVidhanSabhaAsync(Pagination paging, bool? Prabhari = null, int? stateId = null);
         Task<VidhanSabhaRegister> GetVidhanSabhaByIdAsync(int id);
         Task<bool> DeleteVidhanSabhaAsync(int id);
 
@@ -47,8 +48,8 @@ namespace GlobalVidhanSabha.Models.AdminMain
 
         Task<Dashboard> GetDashboardCountsAsync();
         Task<List<KeyValuePair<string, int>>> GetStateWiseVidhanSabhaChartAsync();
-        Task<List<KeyValuePair<string, int>>> GetDistrictWiseVidhanSabhaChartAsync();
-        Task<List<designationMain>> GetDesignationTypeAsync();
+        Task<List<KeyValuePair<string, int>>> GetDistrictWiseVidhanSabhaChartAsync(int? StateId);
+        Task<List<designationType>> GetDesignationTypeAsync();
 
         //use stste prabhari interface
         Task<PagedResult<StatePrabhariModel>> GetAllStatePrabhariAsync(Pagination paging);

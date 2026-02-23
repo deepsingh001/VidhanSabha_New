@@ -1,4 +1,5 @@
 ﻿using DocumentFormat.OpenXml.EMMA;
+using GlobalVidhanSabha.Helpers;
 using GlobalVidhanSabha.Models.AdminMain;
 using System;
 using System.Collections.Generic;
@@ -8,6 +9,7 @@ using System.Net.NetworkInformation;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Http;
+using GlobalVidhanSabha.Helpers;
 using VishanSabha.Services;
 
 namespace GlobalVidhanSabha.vidhanSabhaApiController
@@ -23,7 +25,17 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
             _service = new AdminService();
 
         }
-        
+
+        private int StateId
+        {
+            get
+            {
+                return HttpContext.Current?.Session?["StateId"] != null
+                    ? Convert.ToInt32(HttpContext.Current.Session["StateId"])
+                    : 0;
+            }
+        }
+
         [HttpGet]
         [Route("getAllDesignation")]
         public async Task<IHttpActionResult> GetAll([FromUri] Pagination paging)
@@ -141,8 +153,7 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
             if (model == null)
                 return ApiBadRequest("Invalid District data");
 
-            try
-            {
+          
                 int id = await _service.SaveDistictAsync(model);
 
                 return Ok(new
@@ -151,16 +162,7 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
                     message = model.Id == 0 ? "District added successfully!" : "District updated successfully!",
                     data = id
                 });
-            }
-            catch (Exception ex)
-            {
-                // This will send RAISERROR message to client
-                return Ok(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
+                                              
         }
 
 
@@ -231,22 +233,11 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
 
         }
 
-        //[HttpGet]
-        //[Route("getAllVidhanSabha")]
-        //public async Task<IHttpActionResult> GetAllVidhanSabha([FromUri] Pagination paging, [FromUri] string filter = null)
-        //{
 
-        //    return await ProcessRequestAsync(async () =>
-        //    {
-        //        return await _service.GetAllVidhanSabhaAsync(paging);
-        //    });
-        //}
 
         [HttpGet]
         [Route("getAllVidhanSabha")]
-        public async Task<IHttpActionResult> GetAllVidhanSabha(
-    [FromUri] Pagination paging,
-    [FromUri] string filter = null)
+        public async Task<IHttpActionResult> GetAllVidhanSabha([FromUri] Pagination paging,[FromUri] string filter = null)
         {
             return await ProcessRequestAsync(async () =>
             {
@@ -259,8 +250,14 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
                     else if (filter.Equals("withoutPrabhari", StringComparison.OrdinalIgnoreCase))
                         prabhari = false;
                 }
+                //int? stateId = null;
 
-                return await _service.GetAllVidhanSabhaAsync(paging, prabhari);
+                //if (HttpContext.Current.Session["StateId"] != null)
+                //{
+                //    stateId = Convert.ToInt32(HttpContext.Current.Session["StateId"]);
+                //}
+
+                return await _service.GetAllVidhanSabhaAsync(paging, prabhari, StateId);
             });
         }
 
@@ -270,9 +267,14 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
         [Route("SaveVidhanSabhaRegistration")]
         public async Task<IHttpActionResult> SaveVidhanSabhaRegistration()
         {
-            try
-            {
+           
                 int? VidhansabhaId = null;
+                //int stateId = 0;
+
+                //if (HttpContext.Current?.Session?["StateId"] != null)
+                //{
+                //    stateId = Convert.ToInt32(HttpContext.Current.Session["StateId"]);
+                //}
 
                 if (HttpContext.Current != null &&
                     HttpContext.Current.Session != null &&
@@ -299,9 +301,7 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
                     Address = request.Form["Address"],
                     Profession = request.Form["Profession"],
 
-                    StateId = int.TryParse(request.Form["StateId"], out int stateId)
-                                ? stateId
-                                : 0,
+                    StateId = StateId,
 
                     DistrictId = int.TryParse(request.Form["DistrictId"], out int districtId)
                                 ? districtId
@@ -318,27 +318,10 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
                     Status = true
                 };
 
-                // FILE UPLOAD
-                if (request.Files.Count > 0)
-                {
-                    var file = request.Files["Profile"];
+                var file = request.Files["Profile"];
 
-                    if (file != null && file.ContentLength > 0)
-                    {
-                        string folder = HttpContext.Current.Server.MapPath("~/Uploads/VidhanSabha/");
+                model.Profile = ImageUploadHelper.SaveImage(file, "~/Uploads/VidhanSabha/");
 
-                        if (!Directory.Exists(folder))
-                            Directory.CreateDirectory(folder);
-
-                        string fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
-
-                        string fullPath = Path.Combine(folder, fileName);
-
-                        file.SaveAs(fullPath);
-
-                        model.Profile = "/Uploads/VidhanSabha/" + fileName;
-                    }
-                }
 
                 int savedId = await _service.SaveVidhanSabhaRegistrationAsync(model);
 
@@ -353,11 +336,8 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
                 }
 
                 return BadRequest("Save failed");
-            }
-            catch (Exception ex)
-            {
-                return InternalServerError(ex);
-            }
+            
+           
         }
 
 
@@ -402,7 +382,7 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
         [HttpGet]
         [Route("GetDashboardCounts")]
         public async Task<IHttpActionResult> GetDashboardCounts()
-        {
+        {      
             return await ProcessRequestAsync(async () =>
             {
                 var data = await _service.GetDashboardCountsAsync();
@@ -414,8 +394,6 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
         [Route("getVidhanSabhaByState")]
         public async Task<IHttpActionResult> GetVidhanSabhaByState([FromUri] int DistrictId, [FromUri] Pagination paging)
         {
-
-
             return await ProcessRequestAsync(async () =>
             {
                 return await _service.GetVidhanSabhaByStateIdAsync(DistrictId, paging);
@@ -439,7 +417,7 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
         {
             return await ProcessRequestAsync(async () =>
             {
-                return await _service.GetDistrictWiseVidhanSabhaChartAsync();
+                return await _service.GetDistrictWiseVidhanSabhaChartAsync(StateId);
 
             });
         }
@@ -455,6 +433,7 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
             });
 
         }
+
         [HttpGet]
         [Route("GetAllStatePrabhari")]
         public async Task<IHttpActionResult> GetAllStatePrabhari([FromUri] Pagination paging){
@@ -469,18 +448,9 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
         [Route("SaveStatePrabhari")]
         public async Task<IHttpActionResult> SaveStatePrabhari()
         {
-            try
-            {
+          
                 var request = HttpContext.Current.Request;
-                int? StateId = null;
-
-                if (HttpContext.Current != null &&
-                    HttpContext.Current.Session != null &&
-                    HttpContext.Current.Session["StateId"] != null)
-                {
-                    StateId = Convert.ToInt32(HttpContext.Current.Session["StateId"]);
-                }
-
+               
 
                 StatePrabhariModel model = new StatePrabhariModel
                 {
@@ -498,26 +468,9 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
                 };
 
                 // Image Upload
-                if (request.Files.Count > 0)
-                {
-                    var file = request.Files["Profile"];
+                var file = request.Files["Profile"];
 
-                    if (file != null && file.ContentLength > 0)
-                    {
-                        string fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-
-                        string path = HttpContext.Current.Server.MapPath("~/Uploads/StatePrabhari/");
-
-                        if (!Directory.Exists(path))
-                            Directory.CreateDirectory(path);
-
-                        string fullPath = Path.Combine(path, fileName);
-
-                        file.SaveAs(fullPath);
-
-                        model.Profile = fileName;
-                    }
-                }
+                model.Profile = ImageUploadHelper.SaveImage(file, "~/Uploads/VidhanSabha/");
 
                 var result = await _service.SaveStatePrabhariAsync(model);
 
@@ -528,11 +481,8 @@ namespace GlobalVidhanSabha.vidhanSabhaApiController
                     data = result
                 });
 
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            
+           
         }
 
 

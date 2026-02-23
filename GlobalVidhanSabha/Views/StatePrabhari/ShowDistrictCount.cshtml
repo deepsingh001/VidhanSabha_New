@@ -1,0 +1,140 @@
+﻿@{
+    Layout = "~/Views/Shared/_PrabhariLayout.cshtml";
+
+    var stateId = ViewBag.StateId;
+}
+
+<style>
+    .table-compact-custom {
+        font-size: 0.85rem;
+    }
+
+        .table-compact-custom td {
+            padding: 6px 10px !important;
+        }
+
+    .sno-col {
+        width: 50px;
+        text-align: center;
+    }
+</style>
+
+<div class="card border-0 shadow-sm rounded-3">
+
+    <div class="card-header bg-white py-2">
+        <h6 class="mb-0 fw-bold text-navy">
+            District-wise Counts
+        </h6>
+    </div>
+
+    <div class="card-body p-2">
+
+        <div class="table-responsive">
+
+            <table id="districtTable"
+                   class="table table-hover table-bordered table-sm table-compact-custom w-100">
+
+                <thead>
+                    <tr>
+                        <th class="text-center sno-col">S.No</th>
+                        @*<th>State Name</th>*@
+                        <th>District Name</th>
+                        <th class="text-center">Count</th>
+                        <th class="text-center">Remaining</th>
+                    </tr>
+                </thead>
+
+                <tbody></tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script src="~/Scripts/jquery-3.7.0.min.js"></script>
+
+<script>
+
+let districtDataTable;
+
+const stateId = @stateId; // session se aya hua StateId
+
+$(document).ready(function () {
+
+    loadDistrictData();
+
+});
+
+
+function loadDistrictData()
+{
+
+    if ($.fn.DataTable.isDataTable('#districtTable')) {
+
+        $('#districtTable').DataTable().clear().destroy();
+
+    }
+
+    districtDataTable = initPaginatedTable({
+
+        apiUrl: `/api/Admin/getDistrictByStateCount?stateId=${stateId}`,
+
+        tableSelector: '#districtTable',
+
+        columns: [
+
+            {
+                data: null,
+                className: "text-center",
+                render: function (data, type, row, meta)
+                {
+                    return meta.row + 1;
+                }
+            },
+
+            //{
+            //    data: "StateName"
+            //},
+
+            {
+                data: "DistrictName"
+            },
+
+            {
+                data: "Count",
+                className: "text-center",
+                render: function (count, type, row)
+                {
+                    return `
+                        <a href="/StatePrabhari/VidhanSabhaRagiter?StateId=${row.StateId}&DistrictId=${row.DistrictId}"
+                           class="fw-bold text-decoration-none text-navy">
+
+                           ${count}
+
+                        </a>`;
+                }
+            },
+
+            {
+                data: "RemainingCount",
+                className: "text-center",
+                render: function (data)
+                {
+                    return `
+                        <span style="color:#198754; font-weight:600;">
+                            ${data}
+                        </span>`;
+                }
+            }
+
+        ]
+
+    });
+
+}
+
+</script>

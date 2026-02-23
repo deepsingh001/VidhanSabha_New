@@ -1,4 +1,6 @@
 ﻿using DocumentFormat.OpenXml.EMMA;
+using GlobalVidhanSabha.Helpers;
+using GlobalVidhanSabha.Models.AdminMain;
 using GlobalVidhanSabha.Models.SamithiMember;
 using System;
 using System.Collections.Generic;
@@ -8,7 +10,7 @@ using System.Data.SqlClient;
 using System.Threading.Tasks;
 using static GlobalVidhanSabha.Models.SamithiMember.VidhanSabhaModel;
 
-public class SamithiMemberService : ISamithiMemberService
+public class SamithiMemberService : GlobalExceptionHandler.BaseService, ISamithiMemberService
 {
     private readonly string conn;
     private SqlConnection con;
@@ -18,44 +20,48 @@ public class SamithiMemberService : ISamithiMemberService
         conn = ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
     }
     // ADD THIS METHOD HERE
- 
+
     public async Task<int> SaveMemberAsync(SamithiMemberModel member)
     {
-        using (SqlConnection con = new SqlConnection(conn))
-        using (SqlCommand cmd = new SqlCommand("sp_ManageSamithiMember", con))
+        return await ExecuteAsync(async () =>
         {
-            cmd.CommandType = CommandType.StoredProcedure;
+            using (SqlConnection con = new SqlConnection(conn))
+            using (SqlCommand cmd = new SqlCommand("sp_ManageSamithiMember", con))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
 
-            string action = member.Id.HasValue && member.Id > 0 ? "UPDATE" : "ADD";
+                string action = member.Id.HasValue && member.Id > 0 ? "UPDATE" : "ADD";
 
-            cmd.Parameters.AddWithValue("@Action", action);
+                cmd.Parameters.AddWithValue("@Action", action);
 
-            if (action == "UPDATE")
-                cmd.Parameters.AddWithValue("@Id", member.Id.Value);
+                if (action == "UPDATE")
+                    cmd.Parameters.AddWithValue("@Id", member.Id.Value);
 
-            cmd.Parameters.AddWithValue("@DesignationType", (object)member.DesignationType ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@SamithiMember", (object)member.SamithiMember ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Email", (object)member.Email ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@PhoneNo", (object)member.PhoneNo ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Category", (object)member.Category ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Caste", (object)member.Caste ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Education", (object)member.Education ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Profession", (object)member.Profession ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Address", (object)member.Address ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@ProfilePath", (object)member.ProfilePath ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@DesignationType", (object)member.DesignationType ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@DesignationNameId", (object)member.DesignationNameId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@SamithiMember", (object)member.SamithiMember ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@Email", (object)member.Email ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@PhoneNo", (object)member.PhoneNo ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@Category", (object)member.Category ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@Caste", (object)member.Caste ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@Education", (object)member.Education ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@Profession", (object)member.Profession ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@Address", (object)member.Address ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ProfilePath", (object)member.ProfilePath ?? DBNull.Value);
 
-            cmd.Parameters.AddWithValue("@Id", member.VidhanSabhaId);
+                cmd.Parameters.AddWithValue("@stateId", member.stateId);
 
-            await con.OpenAsync();
+                await con.OpenAsync();
 
-            return await cmd.ExecuteNonQueryAsync();
-        }
+                return await cmd.ExecuteNonQueryAsync();
+            }
+        });
     }
 
 
     public async Task<int> DeleteMemberAsync(int id)
     {
-        try
+        return await ExecuteAsync(async () =>
         {
             using (SqlConnection con = new SqlConnection(conn))
             using (SqlCommand cmd = new SqlCommand("sp_ManageSamithiMember", con))
@@ -68,25 +74,26 @@ public class SamithiMemberService : ISamithiMemberService
                 int rows = await cmd.ExecuteNonQueryAsync();
                 return rows;
             }
-        }
-        catch (Exception ex)
-        {
-            throw new Exception("Error deleting Samithi member: " + ex.Message);
-        }
+        });
+       
     }
 
-    public async Task<List<SamithiMemberModel>> GetAllMembersAsync(int? vidhanSabhaId)
+    public async Task<List<SamithiMemberModel>> GetAllMembersAsync(int? stateId, Pagination paging)
     {
-        var members = new List<SamithiMemberModel>();
-        try
+        return await ExecuteAsync(async () =>
         {
+            var members = new List<SamithiMemberModel>();
+
             using (SqlConnection con = new SqlConnection(conn))
             using (SqlCommand cmd = new SqlCommand("sp_ManageSamithiMember", con))
             {
                 cmd.CommandType = CommandType.StoredProcedure;
                 cmd.Parameters.AddWithValue("@Action", "GETALL");
-                cmd.Parameters.AddWithValue("@VidhanSabhaId",
-              vidhanSabhaId.HasValue ? (object)vidhanSabhaId.Value : DBNull.Value);
+                cmd.Parameters.AddWithValue("@PageNumber", paging.PageNumber);
+                cmd.Parameters.AddWithValue("@PageSize", paging.Items);
+                cmd.Parameters.AddWithValue("@Search", string.IsNullOrWhiteSpace(paging.search) ? null : paging.search);
+                cmd.Parameters.AddWithValue("@stateId",
+              stateId.HasValue ? (object)stateId.Value : DBNull.Value);
 
                 await con.OpenAsync();
                 using (var reader = await cmd.ExecuteReaderAsync())
@@ -97,6 +104,8 @@ public class SamithiMemberService : ISamithiMemberService
                         {
                             Id = reader["Id"] as int?,
                             DesignationType = reader["DesignationType"] as int?,
+                            DesignationTypeName = reader["DesignationTypeName"].ToString(),
+                            DesignationName = reader["DesignationName"].ToString(),
                             SamithiMember = reader["SamithiMember"].ToString(),
                             Email = reader["Email"].ToString(),
                             PhoneNo = reader["PhoneNo"].ToString(),
@@ -106,24 +115,22 @@ public class SamithiMemberService : ISamithiMemberService
                             Profession = reader["Profession"].ToString(),
                             Address = reader["Address"].ToString(),
                             ProfilePath = reader["ProfilePath"].ToString(),
-                            VidhanSabhaId = reader["VidhanSabhaId"] as int?
+                            stateId = reader["stateId"] as int?
                         });
                     }
                 }
             }
             return members;
-        }
-        catch (Exception ex)
-        {
-            throw new Exception("Error fetching all Samithi members: " + ex.Message);
-        }
+        });
+        
     }
 
     public async Task<SamithiMemberModel> GetMemberByIdAsync(int id)
     {
-        SamithiMemberModel member = null;
-        try
+        return await ExecuteAsync(async () =>
         {
+            SamithiMemberModel member = null;
+
             using (SqlConnection con = new SqlConnection(conn))
             using (SqlCommand cmd = new SqlCommand("sp_ManageSamithiMember", con))
             {
@@ -141,6 +148,7 @@ public class SamithiMemberService : ISamithiMemberService
                             Id = reader["Id"] as int?,
                             DesignationType = reader["DesignationType"] as int?,
                             SamithiMember = reader["SamithiMember"].ToString(),
+                            DesignationName= reader["DesignationName"].ToString(),
                             Email = reader["Email"].ToString(),
                             PhoneNo = reader["PhoneNo"].ToString(),
                             Category = reader["Category"] as int?,
@@ -154,47 +162,71 @@ public class SamithiMemberService : ISamithiMemberService
                 }
             }
             return member;
-        }
-        catch (Exception ex)
-        {
-            throw new Exception("Error fetching Samithi member by ID: " + ex.Message);
-        }
+        });
+        
     }
 
-    public async Task<MemberDashboardCount> GetDashboardCountAsync(int? vidhanSabhaId)
+    public async Task<MemberDashboardCount> GetDashboardCountAsync(int? StateId)
     {
-        MemberDashboardCount dashboard = new MemberDashboardCount();
-
-        try
+        return await ExecuteAsync(async () =>
         {
+            MemberDashboardCount dashboard = new MemberDashboardCount();
+
+
             using (SqlConnection con = new SqlConnection(conn))
-            using (SqlCommand cmd = new SqlCommand("sp_ManageSamithiMember", con))
             {
-                cmd.CommandType = CommandType.StoredProcedure;
-
-                cmd.Parameters.AddWithValue("@Action", "DashboardCount");
-                cmd.Parameters.AddWithValue("@VidhanSabhaId", (object)vidhanSabhaId ?? DBNull.Value);
-
                 await con.OpenAsync();
 
-                using (SqlDataReader reader = await cmd.ExecuteReaderAsync())
+                // Total VidhanSabha
+                using (SqlCommand cmd2 = new SqlCommand("usp_Dashboard", con))
                 {
-                    if (await reader.ReadAsync())
-                    {
-                        dashboard.TotalMembers = reader["TotalMembers"] != DBNull.Value
-                            ? Convert.ToInt32(reader["TotalMembers"])
-                            : 0;
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            throw new Exception("Error fetching dashboard count", ex);
-        }
+                    cmd2.CommandType = CommandType.StoredProcedure;
+                    cmd2.Parameters.AddWithValue("@Action", "TotalVidhanSabhaCount");
+                    cmd2.Parameters.AddWithValue("@StateId", (object)StateId ?? DBNull.Value);
 
-        return dashboard;
+                    var result = await cmd2.ExecuteScalarAsync();
+                    dashboard.TotalVidhanSabhaCount = result != null ? Convert.ToInt32(result) : 0;
+                }
+
+                // With Prabhari
+                using (SqlCommand cmd3 = new SqlCommand("usp_Dashboard", con))
+                {
+                    cmd3.CommandType = CommandType.StoredProcedure;
+                    cmd3.Parameters.AddWithValue("@Action", "TotalVidhanSabhaWithoutPrabhari");
+                    cmd3.Parameters.AddWithValue("@StateId", (object)StateId ?? DBNull.Value);
+
+                    var result = await cmd3.ExecuteScalarAsync();
+                    dashboard.TotalVidhanSabhaWithoutPrabhari = result != null ? Convert.ToInt32(result) : 0;
+                }
+
+                // WithOut Prabhari
+                using (SqlCommand cmd3 = new SqlCommand("usp_Dashboard", con))
+                {
+                    cmd3.CommandType = CommandType.StoredProcedure;
+                    cmd3.Parameters.AddWithValue("@Action", "TotalVidhanSabhaWithPrabhari");
+                    cmd3.Parameters.AddWithValue("@StateId", (object)StateId ?? DBNull.Value);
+
+                    var result = await cmd3.ExecuteScalarAsync();
+                    dashboard.TotalVidhanSabhaWithPrabhari = result != null ? Convert.ToInt32(result) : 0;
+                }
+                //Total Count Samithi Mmenber
+                using (SqlCommand cmd3 = new SqlCommand("usp_Dashboard", con))
+                {
+                    cmd3.CommandType = CommandType.StoredProcedure;
+                    cmd3.Parameters.AddWithValue("@Action", "TotalCountSamithiMmenber");
+                    cmd3.Parameters.AddWithValue("@StateId", (object)StateId ?? DBNull.Value);
+
+                    var result = await cmd3.ExecuteScalarAsync();
+                    dashboard.TotalCountSamithiMmenber = result != null ? Convert.ToInt32(result) : 0;
+                }
+
+
+            }
+
+            return dashboard;
+        });
     }
 
 
 }
+

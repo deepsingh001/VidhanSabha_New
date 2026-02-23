@@ -8,7 +8,7 @@ public static class EmailService
     private static string fromEmail = "macreelinfosoft@gmail.com";
     private static string appPassword = "wglg owzm muts ejli";
 
-    public static async Task SendLoginEmailAsync(string toEmail, string username, string password)
+    public static async Task SendLoginEmailAsync(string toEmail, string PhoneNo, string password)
     {
         MailMessage message = new MailMessage();
         message.From = new MailAddress(fromEmail);
@@ -20,7 +20,7 @@ Dear User,
 
 Your account has been created successfully.
 
-Username: {username}
+Username: {PhoneNo}
 Password: {password}
 
 Please login and change your password.

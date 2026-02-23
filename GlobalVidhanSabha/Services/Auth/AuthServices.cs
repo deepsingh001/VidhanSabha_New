@@ -158,11 +158,11 @@ namespace VishanSabha.Services.Auth
                                 Status = Convert.ToInt32(reader["Status"]),
                                 VidhanSabhaId =reader["VidhanSabhaId"] !=DBNull.Value? Convert.ToInt32(reader["VidhanSabhaId"]):(int?)null,
 
-                        //         StatePrabhariId =
-                        //Convert.ToInt32(reader["StatePrabhariId"]),
 
-                        //        StateId =
-                        //Convert.ToInt32(reader["StateId"])
+                                //         StatePrabhariId =
+                                //Convert.ToInt32(reader["StatePrabhariId"]),
+
+                                StateId = reader["StateId"] != DBNull.Value ? Convert.ToInt32(reader["StateId"]) : 0
                             };
                         }
                     }
@@ -171,6 +171,7 @@ namespace VishanSabha.Services.Auth
 
             return user;
         }
+
         public async Task<string> GetLocation(string latitude, string longitude, int userId)
         {
             try

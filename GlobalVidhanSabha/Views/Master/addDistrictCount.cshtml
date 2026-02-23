@@ -146,7 +146,7 @@
                 Count: parseInt($('#Count').val())
             };
 
-            Swal.fire({ title: 'Saving...', didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'Saving...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
 
             $.ajax({
                 url: '/api/Admin/SaveDistict',
@@ -154,19 +154,26 @@
                 contentType: 'application/json',
                 data: JSON.stringify(model),
                 success: function (res) {
+                    Swal.close(); // <- close the "Saving..." loader first
+
                     if (res.success) {
                         Swal.fire('Saved!', res.message, 'success').then(() => {
                             $('#districtModal').modal('hide');
                             location.reload();
                         });
                     } else {
-                        Swal.fire('Error', res.message, 'error'); // <- SQL RAISERROR will appear here
+                        Swal.fire('Error', res.message || 'Something went wrong', 'error');
                     }
                 },
                 error: function (xhr) {
-                    Swal.fire('Error', 'Server error', 'error');
+                    Swal.close();
+                    let msg = 'Server error';
+                    try {
+                        const res = JSON.parse(xhr.responseText);
+                        if (res && res.message) msg = res.message;
+                    } catch { }
+                    Swal.fire('Error', msg, 'error');
                 }
-
             });
         });
     });
@@ -196,7 +203,7 @@
                     className: "text-center",
                     render: function (count, type, row) {
                         // Make count clickable
-                        return `<a href="/Master/VidhanSabhaRagiter?StateId=${row.StateId}&DistrictId=${row.DistrictId}"
+                        return `<a href=""
                   class="text-decoration-none text-navy fw-bold">
                   ${count}
 

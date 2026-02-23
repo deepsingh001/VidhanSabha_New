@@ -31,10 +31,7 @@
         max-width: 750px;
         margin-top: 65px;
     }
-    /*#vidhanSabhaModal .modal-content {
-        max-height: 85vh;*/ /* 80vh se kam kar diya */
-    /*overflow-y: auto;
-    }*/
+  
 
 </style>
 
@@ -81,12 +78,15 @@
 
                     <div class="row g-2 mb-2">
 
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted">Select State</label>
-                            <select class="form-select form-select-sm" id="StateId">
-                                <option value="">-- Select State --</option>
-                            </select>
-                        </div>
+                        @*<div class="col-md-6">
+            <label class="form-label small fw-bold text-muted">Select State</label>
+            <select class="form-select form-select-sm" id="StateId">
+                <option value="">-- Select State --</option>
+            </select>
+        </div>*@
+
+                        <input type="hidden" id="StateId" value="@ViewBag.StateId">
+
 
                         <div class="col-md-6">
                             <label class="form-label small fw-bold text-muted">Select District</label>
@@ -119,7 +119,11 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold text-muted">Phone No</label>
-                                <input type="text" class="form-control form-control-sm" id="PhoneNo">
+                                <input type="tel" class="form-control form-control-sm" id="PhoneNo">
+
+                                <span id="phoneError" style="color:red; font-size:13px; display:none;">
+                                    Add 10 digit contact number
+                                </span>
                             </div>
 
                             <div class="col-md-6">
@@ -178,6 +182,21 @@
         return urlParams.get(param);
     }
 
+    function showLoader(title = "Please wait...") {
+        Swal.fire({
+            title: title,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+    }
+
+    function hideLoader() {
+        Swal.close();
+    }
+
     function loadSubCaste(categoryId, callback) {
         $.get('/api/Admin/GetSubCasteByCategory', { categoryId: categoryId }, function (res) {
             if (!res.success || !res.data || !res.data.data) return;
@@ -194,6 +213,21 @@
     }
 
     $(document).ready(function () {
+
+        $('#PhoneNo').on('input', function () {
+
+            // Sirf number allow karega
+            this.value = this.value.replace(/[^0-9]/g, '');
+
+            var phone = this.value;
+
+            if (phone.length !== 10) {
+                $('#phoneError').show();
+            } else {
+                $('#phoneError').hide();
+            }
+
+        });
 
         loadCasteCategory();
 
@@ -219,36 +253,6 @@
                 $('#Category').html(options);
             });
         }
-
-        // Load states
-        $.get('/api/Admin/getAllState', function (res) {
-            let options = '<option value="">--Select State--</option>';
-            res.data.forEach(s => options += `<option value="${s.StateId}">${s.StateName}</option>`);
-            $('#StateId').html(options);
-        });
-
-        $('#StateId').on('change', function () {
-            const stateId = $(this).val();
-
-            if (stateId) {
-                $.get(`/api/Admin/getDistrictsByState?stateId=${stateId}`, function (res) {
-
-                    let options = '<option value="">--Select District--</option>';
-
-                    if (res.success && res.data && res.data.data) {
-                        res.data.data.forEach(d => {
-                            options += `<option value="${d.DistrictId}">${d.DistrictName}</option>`;
-                        });
-                    }
-
-                    $('#DistrictId').html(options).prop('disabled', false);
-                });
-            } else {
-                $('#DistrictId')
-                    .html('<option value="">--First Select State--</option>')
-                    .prop('disabled', true);
-            }
-        });
 
 
         $('#Prabhari').on('change', function () {
@@ -320,6 +324,8 @@
         $('#vidhanSabhaForm').on('submit', function (e) {
             e.preventDefault();
 
+            showLoader("Saving data...");
+
             const isPrabhari = $('#Prabhari').is(':checked');
 
             let formData = new FormData();
@@ -354,11 +360,16 @@
                 processData: false,
                 contentType: false,
                 success: function (res) {
+
+                    hideLoader();
+
                     Swal.fire('Success', 'Saved Successfully', 'success');
                     $('#vidhanSabhaModal').modal('hide');
                     loadData();
                 },
                 error: function (xhr) {
+
+                    hideLoader();
 
                     let msg = 'Something went wrong';
 
@@ -388,64 +399,53 @@
         });
     });
 
-    function openVidhanSabhaModal() {
+   function openVidhanSabhaModal() {
 
-        $('#vidhanSabhaForm')[0].reset();
-        $('#Id').val(0);
-        $('#Prabhari').prop('checked', false);
-        $('#prabhariDetails').hide();
-        $('#modalTitle').text('New Vidhan Sabha Registration');
+    $('#vidhanSabhaForm')[0].reset();
+    $('#Id').val(0);
+    $('#Prabhari').prop('checked', false);
+    $('#prabhariDetails').hide();
+    $('#modalTitle').text('New Vidhan Sabha Registration');
 
-        const stateId = getQueryParam("StateId");
-        const districtId = getQueryParam("DistrictId");
+   const stateId = '@(HttpContext.Current.Session["StateId"] ?? 0)';
 
-        // 1️⃣ Load states
-        $.get('/api/Admin/getAllStateCount', function (res) {
+    console.log("Session StateId:", stateId);
 
-            let options = '<option value="">--Select State--</option>';
-            if (res.success && res.data && res.data.data) {
-                res.data.data.forEach(s => {
-                    options += `<option value="${s.StateId}">${s.StateName}</option>`;
-                });
-            }
+    // ✅ correct way for hidden input
+    $('#StateId').val(stateId);
 
-            $('#StateId').html(options);
+    // load districts
+       $.get(`/api/Admin/getDistrictByStateCount?stateId=${stateId}`, function (res) {
 
-            if (stateId) {
-                $('#StateId').val(stateId).trigger('change');
+        let options = '<option value="">--Select District--</option>';
 
-                $.get(`/api/Admin/getDistrictsByState?stateId=${stateId}`, function (res) {
+        if (res.success && res.data && res.data.data) {
+            res.data.data.forEach(d => {
+                options += `<option value="${d.DistrictId}">${d.DistrictName}</option>`;
+            });
+        }
 
-                    let dOptions = '<option value="">--Select District--</option>';
+        $('#DistrictId').html(options).prop('disabled', false);
 
-                    if (res.success && res.data && res.data.data) {
-                        res.data.data.forEach(d => {
-                            dOptions += `<option value="${d.DistrictId}">${d.DistrictName}</option>`;
-                        });
-                    }
+        if (districtId) {
+            $('#DistrictId').val(districtId);
+        }
+    });
 
-                    $('#DistrictId').html(dOptions).prop('disabled', false);
-
-                    if (districtId) {
-                        $('#DistrictId').val(districtId);
-                    }
-                });
-
-            } else {
-                $('#DistrictId')
-                    .html('<option value="">--First Select State--</option>')
-                    .prop('disabled', true);
-            }
-        });
-
-        new bootstrap.Modal(document.getElementById('vidhanSabhaModal')).show();
-    }
+    new bootstrap.Modal(document.getElementById('vidhanSabhaModal')).show();
+}
 
     function editVS(id) {
+
+        showLoader("Loading data...");
+
         $.ajax({
             url: `/api/Admin/getVidhanSabhaById?id=${id}`,
             type: 'GET',
             success: function (res) {
+
+                hideLoader();
+
                 let data;
 
                 if (res.success && res.data) data = res.data;
@@ -458,37 +458,29 @@
                 $('#Id').val(data.Id);
                 $('#VidhanSabhaName').val(data.VidhanSabhaName);
 
-                // 1️⃣ State bind
-                $.get('/api/Admin/getAllState', function (stateRes) {
-                    let options = '<option value="">--Select State--</option>';
-                    if (stateRes.data) {
-                        stateRes.data.forEach(s => {
-                            options += `<option value="${s.StateId}">${s.StateName}</option>`;
+
+                $('#StateId').val(data.StateId);
+
+                // district bind
+                $.get(`/api/Admin/getDistrictsByState?stateId=${data.StateId}`, function (distRes) {
+
+                    let options = '<option value="">--Select District--</option>';
+
+                    if (distRes.success && distRes.data && distRes.data.data) {
+                        distRes.data.data.forEach(d => {
+                            options += `<option value="${d.DistrictId}">${d.DistrictName}</option>`;
                         });
                     }
-                    $('#StateId').html(options);
 
-                    if (data.StateId) {
-                        $('#StateId').val(data.StateId);
+                    $('#DistrictId').html(options).prop('disabled', false);
 
-                        // 2️⃣ District bind after state set
-                        $.get(`/api/Admin/getDistrictsByState?stateId=${data.StateId}`, function (distRes) {
-                            let dOptions = '<option value="">--Select District--</option>';
-                            if (distRes.success && distRes.data && distRes.data.data) {
-                                distRes.data.data.forEach(d => {
-                                    dOptions += `<option value="${d.DistrictId}">${d.DistrictName}</option>`;
-                                });
-                            }
-                            $('#DistrictId').html(dOptions).prop('disabled', false);
-
-                            if (data.DistrictId) {
-                                $('#DistrictId').val(data.DistrictId);
-                            }
-                        });
-                    } else {
-                        $('#DistrictId').html('<option value="">--First Select State--</option>').prop('disabled', true);
+                    if (data.DistrictId) {
+                        $('#DistrictId').val(data.DistrictId);
                     }
+
                 });
+              
+               
 
                 // 3️⃣ Prabhari details
                 if (data.Prabhari) {
@@ -517,6 +509,9 @@
                 new bootstrap.Modal(document.getElementById('vidhanSabhaModal')).show();
             },
             error: function () {
+
+                hideLoader();
+
                 Swal.fire('Error', 'Failed to load data', 'error');
             }
         });
@@ -534,10 +529,16 @@
             confirmButtonText: 'Yes, delete it!'
         }).then((result) => {
             if (result.isConfirmed) {
+
+                showLoader("Deleting...");
+
                 $.ajax({
                     url: `/api/Admin/DeleteVidhanSabha?id=${id}`,
                     type: 'DELETE',
                     success: function (res) {
+
+                        hideLoader();
+
                         if (res && res.success) {
                             Swal.fire('Deleted!', 'Record has been deleted.', 'success');
                             loadData();
@@ -546,6 +547,7 @@
                         }
                     },
                     error: function () {
+                        hideLoader();
                         Swal.fire('Error', 'API connection failed', 'error');
                     }
                 });

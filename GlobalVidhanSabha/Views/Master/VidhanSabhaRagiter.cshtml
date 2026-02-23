@@ -347,6 +347,15 @@
                 }
             }
 
+            Swal.fire({
+                title: 'Saving...',
+                text: 'Please wait',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
             $.ajax({
                 url: '/api/Admin/SaveVidhanSabhaRegistration',
                 type: 'POST',
@@ -354,11 +363,16 @@
                 processData: false,
                 contentType: false,
                 success: function (res) {
+
+                    Swal.close();
+
                     Swal.fire('Success', 'Saved Successfully', 'success');
                     $('#vidhanSabhaModal').modal('hide');
                     loadData();
                 },
                 error: function (xhr) {
+
+                    Swal.close(); 
 
                     let msg = 'Something went wrong';
 
@@ -377,6 +391,9 @@
                     }
 
                     Swal.fire({
+
+                       
+
                         icon: 'error',
                         title: 'Error',
                         text: msg

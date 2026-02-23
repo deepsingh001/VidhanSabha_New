@@ -1,7 +1,9 @@
 ﻿using DocumentFormat.OpenXml.Office2010.Excel;
+using GlobalVidhanSabha.Helpers;
 using GlobalVidhanSabha.Models.AdminMain;
 using GlobalVidhanSabha.Models.SamithiMember;
 using System;
+using System.Data;
 using System.Data.SqlClient;
 using System.IO;
 using System.Net.NetworkInformation;
@@ -31,27 +33,29 @@ public class SamithiMemberController : BaseApiController, IRequiresSessionState
         return null;
     }
 
+    private int StateId
+    {
+        get{
+            return HttpContext.Current?.Session?["StateId"] != null
+                ? Convert.ToInt32(HttpContext.Current.Session["StateId"])
+                : 0;
+        }
+    }
+
     [HttpPost]
     [Route("save")]
     public async Task<IHttpActionResult> Save()
     {
-        try
-        {
+       
             var request = HttpContext.Current.Request;
-
-            int? VidhansabhaId = null;
-
-            if (HttpContext.Current != null &&
-                HttpContext.Current.Session != null &&
-                HttpContext.Current.Session["VidhanSabhaId"] != null)
-            {
-                VidhansabhaId = Convert.ToInt32(HttpContext.Current.Session["VidhanSabhaId"]);
-            }
+       
+         
 
             SamithiMemberModel model = new SamithiMemberModel
             {
                 Id = GetInt(request.Form["Id"]),
                 DesignationType = GetInt(request.Form["DesignationType"]),
+                DesignationNameId = GetInt(request.Form["DesignationNameId"]),
                 SamithiMember = request.Form["SamithiMember"],
                 Email = request.Form["Email"],
                 PhoneNo = request.Form["PhoneNo"],
@@ -61,30 +65,12 @@ public class SamithiMemberController : BaseApiController, IRequiresSessionState
                 Profession = request.Form["Profession"],
                 Address = request.Form["Address"],
 
-                VidhanSabhaId = VidhansabhaId
+                stateId = StateId
             };
 
-            // FILE UPLOAD
-            if (request.Files.Count > 0)
-            {
-                var file = request.Files["Profile"];
+            var file = request.Files["Profile"];
 
-                if (file != null && file.ContentLength > 0)
-                {
-                    string folder = HttpContext.Current.Server.MapPath("~/Uploads/Profile");
-
-                    if (!Directory.Exists(folder))
-                        Directory.CreateDirectory(folder);
-
-                    string fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-
-                    string fullPath = Path.Combine(folder, fileName);
-
-                    file.SaveAs(fullPath);
-
-                    model.ProfilePath = "/Uploads/Profile/" + fileName;
-                }
-            }
+            model.ProfilePath = ImageUploadHelper.SaveImage(file, "~/Uploads/VidhanSabha/");
 
             bool isUpdate = model.Id.HasValue && model.Id > 0;
 
@@ -95,14 +81,8 @@ public class SamithiMemberController : BaseApiController, IRequiresSessionState
                 return result > 0 ? result : (int?)null;
 
             }, isUpdate);
-        }
-        catch (Exception ex)
-        {
-            return InternalServerError(ex);
-        }
+       
     }
-
-
 
     [HttpDelete]
     [Route("delete/{id}")]
@@ -111,32 +91,19 @@ public class SamithiMemberController : BaseApiController, IRequiresSessionState
         return await ProcessDeleteAsync(async () =>
         {
             int result = await _service.DeleteMemberAsync(id);
-
-            return result > 0; // convert to bool
+            return result > 0; 
         });
     }
-
 
     [HttpGet]
     [Route("getall")]
-    public async Task<IHttpActionResult> GetAll()
-    {
-        int? vidhanSabhaId = null;
-
-        if (HttpContext.Current != null &&
-            HttpContext.Current.Session != null &&
-            HttpContext.Current.Session["VidhanSabhaId"] != null)
-        {
-            vidhanSabhaId = Convert.ToInt32(HttpContext.Current.Session["VidhanSabhaId"]);
-        }
-
+    public async Task<IHttpActionResult> GetAll([FromUri] Pagination paging)
+    {     
         return await ProcessRequestAsync(async () =>
         {
-            return await _service.GetAllMembersAsync(vidhanSabhaId);
+            return await _service.GetAllMembersAsync(StateId, paging);
         });
     }
-  
-
 
     [HttpGet]
     [Route("get/{id}")]
@@ -152,22 +119,9 @@ public class SamithiMemberController : BaseApiController, IRequiresSessionState
     [Route("dashboardcount")]
     public async Task<IHttpActionResult> DashboardCount()
     {
-        
-            int? vidhanSabhaId = null;
-
-            if (HttpContext.Current != null &&
-                HttpContext.Current.Session != null &&
-                HttpContext.Current.Session["VidhanSabhaId"] != null)
+        return await ProcessRequestAsync(async () =>
             {
-                vidhanSabhaId = Convert.ToInt32(HttpContext.Current.Session["VidhanSabhaId"]);
-            }
-
-            return await ProcessRequestAsync(async () =>
-            {
-                return await _service.GetDashboardCountAsync(vidhanSabhaId);
-            });
-        
-       
-    }
-
+                return await _service.GetDashboardCountAsync(StateId);
+            });    
+    }    
 }

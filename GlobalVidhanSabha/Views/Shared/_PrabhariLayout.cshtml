@@ -383,6 +383,13 @@
                 </a>
             </div>
             <div class="nav-item">
+                <a href="@Url.Action("ShowDistrictCount", "StatePrabhari")" class="nav-link-custom">
+                    <i class="bi bi-calendar-event"></i>
+                    <span class="link-text">District Count</span>
+                </a>
+            </div>
+
+            <div class="nav-item">
                 <a href="@Url.Action("VidhanSabhaRagiter", "StatePrabhari")" class="nav-link-custom">
                     <i class="bi bi-file-earmark-medical"></i>
                     <span class="link-text">Add Vidhan Sabha</span>
@@ -404,10 +411,10 @@
         <header class="top-nav">
             <div class="d-flex align-items-center">
                 <i class="bi bi-list toggle-btn me-3" onclick="toggleSidebar()"></i>
-                <img src="https://upload.wikimedia.org/wikipedia/commons/5/55/Emblem_of_India.svg" height="35" class="me-2 d-none d-sm-block">
+                @*<img src="https://upload.wikimedia.org/wikipedia/commons/5/55/Emblem_of_India.svg" height="35" class="me-2 d-none d-sm-block">
                 <span class="fw-bold d-none d-md-inline text-uppercase" style="font-size: 0.85rem; color: var(--gov-navy);">
                     Vidhan Sabha | Government of India
-                </span>
+                </span>*@
             </div>
 
             <div class="d-flex align-items-center gap-1">

@@ -28,7 +28,7 @@
 
     <div class="row g-2">
         <div class="col-12 col-sm-6 col-xl-3">
-            <a href="/Master/VidhanSabhaRagiter" style="text-decoration: none; color: inherit;">
+            <a href="/Master/AddStatePrabhari" style="text-decoration: none; color: inherit;">
                 <div class="stat-card d-flex align-items-center justify-content-between">
 
                     <div class="icon-box bg-primary bg-opacity-10 text-primary">
@@ -37,46 +37,46 @@
 
                     <div class="text-end">
                         <h3 class="fw-bold mb-0" id="totalMembers">0</h3>
-                        <p class="text-muted mb-0 small">Vidhan Sabha</p>
+                        <p class="text-muted mb-0 small">State Prabhari</p>
                     </div>
 
                 </div>
             </a>
         </div>
 
-        <div class="col-12 col-sm-6 col-xl-3">
-            <a href="/Master/VidhanSabhaRagiter?filter=withPrabhari" style="text-decoration: none; color: inherit;">
-                <div class="stat-card d-flex align-items-center justify-content-between">
+        @*<div class="col-12 col-sm-6 col-xl-3">
+                <a href="/Master/VidhanSabhaRagiter?filter=withPrabhari" style="text-decoration: none; color: inherit;">
+                    <div class="stat-card d-flex align-items-center justify-content-between">
 
-                    <div class="icon-box bg-primary bg-opacity-10 text-primary">
-                        <i class="bi bi-file-check"></i>
+                        <div class="icon-box bg-primary bg-opacity-10 text-primary">
+                            <i class="bi bi-file-check"></i>
+                        </div>
+
+                        <div class="text-end">
+                            <h3 class="fw-bold mb-0" id="withPrabhari">0</h3>
+                            <p class="text-muted mb-0 small">With Prabhari</p>
+                        </div>
                     </div>
+                </a>
+            </div>*@
 
-                    <div class="text-end">
-                        <h3 class="fw-bold mb-0" id="withPrabhari">0</h3>
-                        <p class="text-muted mb-0 small">With Prabhari</p>
+
+        @*<div class="col-12 col-sm-6 col-xl-3">
+                <a href="/Master/VidhanSabhaRagiter?filter=withoutPrabhari" style="text-decoration: none; color: inherit;">
+                    <div class="stat-card d-flex align-items-center justify-content-between" style="cursor:pointer;">
+
+                        <div class="icon-box bg-primary bg-opacity-10 text-primary">
+                            <i class="bi bi-mic"></i>
+                        </div>
+
+                        <div class="text-end">
+                            <h3 class="fw-bold mb-0" id="withoutPrabhari">0</h3>
+                            <p class="text-muted mb-0 small">Without Prabhari</p>
+                        </div>
+
                     </div>
-                </div>
-            </a>
-        </div>
-
-
-        <div class="col-12 col-sm-6 col-xl-3">
-            <a href="/Master/VidhanSabhaRagiter?filter=withoutPrabhari" style="text-decoration: none; color: inherit;">
-                <div class="stat-card d-flex align-items-center justify-content-between" style="cursor:pointer;">
-
-                    <div class="icon-box bg-primary bg-opacity-10 text-primary">
-                        <i class="bi bi-mic"></i>
-                    </div>
-
-                    <div class="text-end">
-                        <h3 class="fw-bold mb-0" id="withoutPrabhari">0</h3>
-                        <p class="text-muted mb-0 small">Without Prabhari</p>
-                    </div>
-
-                </div>
-            </a>
-        </div>
+                </a>
+            </div>*@
 
 
         <div class="col-12 col-sm-6 col-xl-3">
@@ -112,15 +112,32 @@
         </div>
 
 
+        <div class="col-12 col-sm-6 col-xl-3">
+            <a href="/Master/addDesignation" style="text-decoration: none; color: inherit;">
+                <div class="stat-card d-flex align-items-center justify-content-between" style="cursor:pointer;">
+
+                    <div class="icon-box bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-geo-alt fs-5 "></i>
+                    </div>
+
+                    <div class="text-end">
+                        <h3 class="fw-bold mb-0" id="TotalDesignationName">0</h3>
+                        <p class="text-muted mb-0 small">Total Designation</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+
 
 
         <div class="row g-2 mt-2">
 
-            <!-- State wise Vidhan Sabha -->
+            <!-- State Chart -->
             <div class="col-md-6 stateChartDiv">
                 <div class="card shadow-sm">
                     <div class="card-body">
-                        <h6 class="fw-bold mb-3">State Wise Vidhan Sabha</h6>
+                        <h6 class="fw-bold mb-3">State Wise Count</h6>
                         <div class="chart-container">
                             <canvas id="stateChart"></canvas>
                         </div>
@@ -128,11 +145,11 @@
                 </div>
             </div>
 
-            <!-- District wise Vidhan Sabha -->
+            <!-- District Chart -->
             <div class="col-md-6 districtChartdiv">
                 <div class="card shadow-sm">
                     <div class="card-body">
-                        <h6 class="fw-bold mb-3">District Wise Vidhan Sabha</h6>
+                        <h6 class="fw-bold mb-3">District Wise Count</h6>
                         <div class="chart-container">
                             <canvas id="districtChart"></canvas>
                         </div>
@@ -141,6 +158,8 @@
             </div>
 
         </div>
+
+
 
     </div>
 
@@ -152,177 +171,199 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const pieColors = [
-        '#ff6384',
-        '#ff9f40',
-        '#ffcd56',
-        '#4bc0c0',
-        '#36a2eb',
-        '#9966ff',
-        '#c9cbcf'
-    ];
-</script>
+let stateChart;
+let districtChart;
 
-<script>
-    let charts = {};
+const colors = [
+    '#36a2eb',
+    '#ff6384',
+    '#4bc0c0',
+    '#ff9f40',
+    '#9966ff',
+    '#ffcd56',
+    '#c9cbcf',
+    '#8dd17e',
+    '#ff8a65',
+    '#9575cd'
+];
 
-    function loadPieChart(apiUrl, canvasId, chartTitle) {
+$(document).ready(function () {
 
-        $.get(apiUrl, function (res) {
+    loadStateChart();
+    loadDistrictChart();
 
-            let labels = [];
-            let values = [];
-            let colors = [];
+});
 
-            if (res.data && res.data.length > 0) {
-                labels = res.data.map(x => x.Key);
-                values = res.data.map(x => x.Value);
-                colors = pieColors;
-            } else {
-                // 👇 No Data case
-                labels = ['No Data'];
-                values = [1];
-                colors = ['#e0e0e0']; // Grey color
-            }
 
-            // Destroy old chart if exists
-            if (charts[canvasId]) {
-                charts[canvasId].destroy();
-            }
+// ================= STATE CHART (NOW BAR CHART) =================
 
-            charts[canvasId] = new Chart(document.getElementById(canvasId), {
-                type: 'pie',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: values,
-                        backgroundColor: colors
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top'
+    function loadStateChart() {
+
+        $.ajax({
+            url: '/api/Admin/getAllStateCount?PageNumber=1&Items=1000&search=',
+            type: 'GET',
+
+            success: function (response) {
+
+                if (!response.success) return;
+
+                let list = response.data.data;
+
+                // sort descending
+                list.sort((a, b) => b.Count - a.Count);
+
+                // take top 10
+                let top = list.slice(0, 10);
+
+                // remaining sum
+                let others = list.slice(10)
+                    .reduce((sum, x) => sum + x.Count, 0);
+
+                if (others > 0) {
+                    top.push({
+                        StateName: "Others",
+                        Count: others,
+                        RemainingCount: 0
+                    });
+                }
+
+                const labels = top.map(x => x.StateName);
+                const usedCounts = top.map(x => x.Count);
+                const remainingCounts = top.map(x => x.RemainingCount);
+
+                if (stateChart)
+                    stateChart.destroy();
+
+                stateChart = new Chart(
+                    document.getElementById('stateChart'),
+                    {
+                        type: 'bar',
+
+                        data: {
+                            labels: labels,
+
+                            datasets: [
+                                {
+                                    label: 'Used',
+                                    data: usedCounts,
+                                    backgroundColor: '#36a2eb'
+                                },
+                                {
+                                    label: 'Remaining',
+                                    data: remainingCounts,
+                                    backgroundColor: '#ff6384'
+                                }
+                            ]
                         },
-                        title: {
-                            //display: true,
-                            text: chartTitle
+
+                        options: {
+
+                            indexAxis: 'y', // horizontal
+
+                            responsive: true,
+
+                            maintainAspectRatio: false,
+
+                            plugins: {
+                                legend: {
+                                    position: 'top'
+                                }
+                            },
+
+                            scales: {
+                                x: {
+                                    beginAtZero: true
+                                }
+                            }
                         }
                     }
-                }
-            });
+                );
 
+            }
         });
+
     }
 
-    $(document).ready(function () {
-
-        // ✅ State Chart
-        loadPieChart(
-            '/api/Admin/GetStateWiseVidhanSabhaChart',
-            'stateChart',
-            'State Wise Vidhan Sabha'
-        );
-
-        // ✅ District Chart
-        loadPieChart(
-            '/api/Admin/GetDistrictWiseVidhanSabhaChart',
-            'districtChart',
-            'District Wise Vidhan Sabha'
-        );
-
-    });
-</script>
 
 
-@*<script>
-        let stateChartObj;
+// ================= DISTRICT CHART (NOW PIE CHART) =================
 
-        function loadStateChart() {
-            $.get('/api/Admin/GetStateWiseVidhanSabhaChart', function (res) {
+    function loadDistrictChart() {
 
-                const labels = res.data.map(x => x.Key);
-                const values = res.data.map(x => x.Value);
+        $.ajax({
+            url: '/api/Admin/getAllDistict?PageNumber=1&Items=5000&search=',
+            type: 'GET',
 
-                if (stateChartObj) {
-                    stateChartObj.destroy();
-                }
+            success: function (response) {
 
-                stateChartObj = new Chart(document.getElementById('stateChart'), {
-                    type: 'pie',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'State Wise Vidhan Sabha',
-                            data: values,
-                            backgroundColor: pieColors
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                position: 'top'
+                if (!response.success) return;
+
+                let list = response.data.data;
+
+                list.sort((a, b) => b.Count - a.Count);
+
+                let top = list.slice(0, 15);
+
+                const labels = top.map(x => x.DistrictName);
+
+                const usedCounts = top.map(x => x.Count);
+
+                const remainingCounts = top.map(x => x.RemainingCount);
+
+                if (districtChart)
+                    districtChart.destroy();
+
+                districtChart = new Chart(
+                    document.getElementById('districtChart'),
+                    {
+                        type: 'bar',
+
+                        data: {
+                            labels: labels,
+
+                            datasets: [
+                                {
+                                    label: 'Used',
+                                    data: usedCounts,
+                                    backgroundColor: '#4bc0c0'
+                                },
+                                {
+                                    label: 'Remaining',
+                                    data: remainingCounts,
+                                    backgroundColor: '#ff9f40'
+                                }
+                            ]
+                        },
+
+                        options: {
+
+                            indexAxis: 'y',
+
+                            responsive: true,
+
+                            maintainAspectRatio: false,
+
+                            plugins: {
+                                legend: {
+                                    position: 'top'
+                                }
                             },
-                            title: {
-                                display: true,
-                                text: 'State Wise Vidhan Sabha'
+
+                            scales: {
+                                x: {
+                                    beginAtZero: true
+                                }
                             }
                         }
                     }
-                });
-            });
-        }
-    </script>
+                );
 
-    <script>
-        let districtChartObj;
-
-        function loadDistrictChart() {
-            $.get('/api/Admin/GetDistrictWiseVidhanSabhaChart', function (res) {
-
-                const labels = res.data.map(x => x.Key);
-                const values = res.data.map(x => x.Value);
-
-                if (districtChartObj) {
-                    districtChartObj.destroy();
-                }
-
-                districtChartObj = new Chart(document.getElementById('districtChart'), {
-                    type: 'pie',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'District Wise Vidhan Sabha',
-                            data: values,
-                            backgroundColor: pieColors
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                position: 'top'
-                            },
-                            title: {
-                                display: true,
-                                text: 'District Wise Vidhan Sabha'
-                            }
-                        }
-                    }
-                });
-            });
-        }
-
-        $(document).ready(function () {
-            loadStateChart();
-            loadDistrictChart();
+            }
         });
-    </script>*@
 
+    }
 
+</script>
 
 <script>
     $(document).ready(function () {
@@ -335,11 +376,13 @@
                     if (response.success && response.data.success) {
                         var counts = response.data.data;
 
-                        $('#totalMembers').text(counts.TotalVidhanSabhaCount);
-                        $('#withPrabhari').text(counts.TotalVidhanSabhaWithPrabhari);
-                        $('#withoutPrabhari').text(counts.TotalVidhanSabhaWithoutPrabhari);
+                        $('#totalMembers').text(counts.TotalStatePrabhari);
+                        //$('#withPrabhari').text(counts.TotalVidhanSabhaWithPrabhari);
+                        //$('#withoutPrabhari').text(counts.TotalVidhanSabhaWithoutPrabhari);
                         $('#TotalUsedStates').text(counts.TotalUsedStates);
                         $('#TotalUsedDistrict').text(counts.TotalUsedDistrict);
+                        $('#TotalDesignationName').text(counts.TotalDesignationName);
+
 
                     } else {
                         console.error('Failed to fetch dashboard counts');

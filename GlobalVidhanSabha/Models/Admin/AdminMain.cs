@@ -14,6 +14,11 @@ namespace GlobalVidhanSabha.Models.AdminMain
         public DateTime? CreatedDate { get; set; }
         public DateTime? UpdateDate { get; set; }
     }
+    public class designationType
+    {
+        public int DesignationId { get; set; }
+        public string DesignationType { get; set; }    
+    }
     public class stateCountMain
     {
         public int Id { get; set; }
@@ -107,9 +112,10 @@ namespace GlobalVidhanSabha.Models.AdminMain
         public int TotalVidhanSabhaCount { get; set; }
         public int TotalVidhanSabhaWithPrabhari { get; set; }
         public int TotalVidhanSabhaWithoutPrabhari { get; set; }
-
+        public int TotalStatePrabhari { get; set; }
         public int TotalUsedStates { get; set; }
         public int TotalUsedDistrict { get; set; }
+        public int TotalDesignationName{ get; set; }
     }
 
 

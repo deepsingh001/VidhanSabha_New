@@ -1,66 +1,53 @@
-﻿using System;
+﻿using GlobalVidhanSabha.Helpers;
+
+using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
-using System.Drawing;
-using System.Net.NetworkInformation;
 using System.Threading.Tasks;
 
 namespace GlobalVidhanSabha.Models.AdminMain
 {
-    public class AdminService : IAdminService
+    public class AdminService : GlobalExceptionHandler.BaseService, IAdminService
     {
-       
         private readonly string conn;
-        private SqlConnection con;
 
         public AdminService()
         {
             conn = ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
         }
-        // CREATE / UPDATE
 
+        // CREATE / UPDATE
         public async Task<int> SaveDesignationAsync(designationMain model)
         {
-            try
+            return await ExecuteAsync(async () =>
             {
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_DesignationType_CRUD", con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
-
-                        cmd.Parameters.AddWithValue("@Action", model.DesignationId > 0 ? "updateDesignation" : "addDesignation");
-                        cmd.Parameters.AddWithValue("@DesignationId", model.DesignationId);
-
+                    cmd.Parameters.AddWithValue("@Action", model.DesignationId > 0 ? "updateDesignation" : "addDesignation");
+                    cmd.Parameters.AddWithValue("@DesignationId", model.DesignationId);
                     cmd.Parameters.AddWithValue("@DesignationName", model.DesignationName);
-                    cmd.Parameters.AddWithValue("@DesignationType", model.DesignationType);
+                    //cmd.Parameters.AddWithValue("@DesignationType", model.DesignationType);
 
                     await con.OpenAsync();
-
                     object result = await cmd.ExecuteScalarAsync();
 
-                    return model.DesignationId == 0
-                        ? (result != null && result != DBNull.Value ? Convert.ToInt32(result) : 0)
-                        : model.DesignationId;
+                    if (model.DesignationId == 0)
+                    {
+                        return (result != null && result != DBNull.Value) ? Convert.ToInt32(result) : 0;
+                    }
+                    return model.DesignationId;
                 }
-            }
-            catch (SqlException ex)
-            {
-                // Throw with exact SQL message
-                throw new Exception(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.Message);
-            }
+            });
         }
 
         // DELETE
-      
         public async Task<bool> DeleteDesignationAsync(int designationId)
         {
-            try
+            return await ExecuteAsync(async () =>
             {
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_DesignationType_CRUD", con))
@@ -71,21 +58,15 @@ namespace GlobalVidhanSabha.Models.AdminMain
 
                     await con.OpenAsync();
                     await cmd.ExecuteNonQueryAsync();
-
                     return true;
                 }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error while deleting designation", ex);
-            }
+            });
         }
 
-      
-        // GET BY ID   
+        // GET BY ID
         public async Task<designationMain> GetDesignationByIdAsync(int designationId)
         {
-            try
+            return await ExecuteAsync(async () =>
             {
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_DesignationType_CRUD", con))
@@ -95,7 +76,6 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     cmd.Parameters.AddWithValue("@DesignationId", designationId);
 
                     await con.OpenAsync();
-
                     using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
                     {
                         if (!await dr.ReadAsync())
@@ -103,85 +83,71 @@ namespace GlobalVidhanSabha.Models.AdminMain
 
                         return new designationMain
                         {
-                            DesignationId = Convert.ToInt32(dr["DesignationId"]),
-                            DesignationName = dr["DesignationName"].ToString(),
-                            DesignationType = dr["DesignationType"].ToString(),
-                            Status = Convert.ToBoolean(dr["Status"]),
-                            CreatedDate = Convert.ToDateTime(dr["CreatedDate"]),
-                            UpdateDate = dr["UpdateDate"] == DBNull.Value
-                                            ? null
-                                            : (DateTime?)Convert.ToDateTime(dr["UpdateDate"])
+                            DesignationId = dr.GetInt32Safe("DesignationId"),
+                            DesignationName = dr.GetStringSafe("DesignationName"),
+                            DesignationType = dr.GetStringSafe("DesignationType"),
+                            Status = dr.GetBoolSafe("Status"),
+                            CreatedDate = dr.GetDateTimeSafe("CreatedDate") ?? DateTime.MinValue,
+                            UpdateDate = dr.GetDateTimeSafe("UpdateDate")
                         };
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error while fetching designation by id", ex);
-            }
+            });
         }
 
-
-     
-
+        // GET ALL (PAGED)
         public async Task<PagedResult<designationMain>> GetAllDesignationsAsync(Pagination paging)
         {
-            List<designationMain> list = new List<designationMain>();
-            int totalRecords = 0;
-
-            using (SqlConnection con = new SqlConnection(conn))
-            using (SqlCommand cmd = new SqlCommand("usp_DesignationType_CRUD", con))
+            return await ExecuteAsync(async () =>
             {
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@Action", "GETALL");
-                cmd.Parameters.AddWithValue("@PageNumber", paging.PageNumber);
-                cmd.Parameters.AddWithValue("@PageSize", paging.Items);
-                cmd.Parameters.AddWithValue("@Search",
-                    string.IsNullOrWhiteSpace(paging.search) ? null : paging.search);
+                var list = new List<designationMain>();
+                int totalRecords = 0;
 
-                await con.OpenAsync();
-
-                using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
+                using (SqlConnection con = new SqlConnection(conn))
+                using (SqlCommand cmd = new SqlCommand("usp_DesignationType_CRUD", con))
                 {
-                    // TotalRecords
-                    if (await dr.ReadAsync())
-                        totalRecords = Convert.ToInt32(dr["TotalRecords"]);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@Action", "GETALL");
+                    cmd.Parameters.AddWithValue("@PageNumber", paging.PageNumber);
+                    cmd.Parameters.AddWithValue("@PageSize", paging.Items);
+                    cmd.Parameters.AddWithValue("@Search", string.IsNullOrWhiteSpace(paging.search) ? null : paging.search);
 
-                    // Next result
-                    await dr.NextResultAsync();
-
-                    while (await dr.ReadAsync())
+                    await con.OpenAsync();
+                    using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
                     {
-                        list.Add(new designationMain
+                        if (await dr.ReadAsync())
+                            totalRecords = dr.GetInt32Safe("TotalRecords");
+
+                        await dr.NextResultAsync(); 
+                        while (await dr.ReadAsync())
                         {
-                            DesignationId = Convert.ToInt32(dr["DesignationId"]),
-                            DesignationName = dr["DesignationName"].ToString(),
-                            DesignationType = dr["DesignationType"].ToString()
-                        });
+                            list.Add(new designationMain
+                            {
+                                DesignationId = dr.GetInt32Safe("DesignationId"),
+                                DesignationName = dr.GetStringSafe("DesignationName"),
+                                //DesignationType = dr.GetStringSafe("designationType")
+                            });
+                        }
                     }
                 }
-            }
 
-            return new PagedResult<designationMain>
-            {
-                data = list,
-                totalRecords = totalRecords
-            };
+                return new PagedResult<designationMain>
+                {
+                    data = list,
+                    totalRecords = totalRecords
+                };
+            });
         }
 
-
-        //============================================================================
-
-
+        // ===== State Counts =====
         public async Task<int> SaveStateCountAsync(stateCountMain model)
         {
-            try
+            return await ExecuteAsync(async () =>
             {
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_UserStateCount", con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
-
                     cmd.Parameters.AddWithValue("@Action", model.Id == 0 ? "Add" : "Update");
                     if (model.Id > 0)
                         cmd.Parameters.AddWithValue("@Id", model.Id);
@@ -189,29 +155,18 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     cmd.Parameters.AddWithValue("@Count", model.Count);
 
                     await con.OpenAsync();
-
-                    // If adding, get new Id, else return existing Id
                     object result = await cmd.ExecuteScalarAsync();
-                    return model.Id == 0
-                        ? (result != null ? Convert.ToInt32(result) : 0)
-                        : model.Id;
+
+                    if (model.Id == 0)
+                        return (result != null && result != DBNull.Value) ? Convert.ToInt32(result) : 0;
+                    return model.Id;
                 }
-            }
-            catch (SqlException ex)
-            {
-                // Throw with exact SQL message
-                throw new Exception(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.Message);
-            }
+            });
         }
 
-        // Delete state count by Id
         public async Task<bool> DeleteStateCountAsync(int StateId)
-        {
-            try
+         {
+            return await ExecuteAsync(async () =>
             {
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_UserStateCount", con))
@@ -221,21 +176,15 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     cmd.Parameters.AddWithValue("@StateId", StateId);
 
                     await con.OpenAsync();
-                    await cmd.ExecuteNonQueryAsync(); // executes soft delete
+                    await cmd.ExecuteNonQueryAsync();
                     return true;
                 }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error deleting state count", ex);
-            }
+            });
         }
 
-
-        // Get state count by Id
         public async Task<stateCountMain> GetStateCountByIdAsync(int id)
         {
-            try
+            return await ExecuteAsync(async () =>
             {
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_UserStateCount", con))
@@ -247,79 +196,55 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     await con.OpenAsync();
                     using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
                     {
-                        if (!await dr.ReadAsync()) return null;
+                        if (!await dr.ReadAsync())
+                            return null;
 
                         return new stateCountMain
                         {
-                            Id = Convert.ToInt32(dr["Id"]),
-                            StateId = Convert.ToInt32(dr["StateId"]),
-                            StateName = dr["StateName"].ToString(),
-                            Count = Convert.ToInt32(dr["Count"]),
-                            CreatedDate = dr["CreatedDate"] != DBNull.Value ? Convert.ToDateTime(dr["CreatedDate"]) : (DateTime?)null,
-                            UpdatedDate = dr["UpdatedDate"] != DBNull.Value ? Convert.ToDateTime(dr["UpdatedDate"]) : (DateTime?)null
+                            Id = dr.GetInt32Safe("Id"),
+                            StateId = dr.GetInt32Safe("StateId"),
+                            StateName = dr.GetStringSafe("StateName"),
+                            Count = dr.GetInt32Safe("Count"),
+                            CreatedDate = dr.GetDateTimeSafe("CreatedDate"),
+                            UpdatedDate = dr.GetDateTimeSafe("UpdatedDate")
                         };
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error fetching state count by id", ex);
-            }
+            });
         }
-
-        // Get all state counts
 
         public async Task<PagedResult<stateCountMain>> GetAllStateCountsAsync(Pagination paging)
         {
-            int totalRecords = 0;
-            List<stateCountMain> list = new List<stateCountMain>();
-
-            try
+            return await ExecuteAsync(async () =>
             {
+                int totalRecords = 0;
+                var list = new List<stateCountMain>();
+
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_UserStateCount", con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@Action", "GetAll");
-                    //cmd.Parameters.AddWithValue("@PageNumber", paging.PageNumber);
-                    //cmd.Parameters.AddWithValue("@PageSize", paging.Items);
-                    //cmd.Parameters.AddWithValue("@Search",
-                    //    string.IsNullOrWhiteSpace(paging.search) ? null : paging.search);
-
-                    // Nullable safe pagination
-                    cmd.Parameters.Add("@PageNumber", SqlDbType.Int).Value =
-                        paging?.PageNumber ?? (object)DBNull.Value;
-
-                    cmd.Parameters.Add("@PageSize", SqlDbType.Int).Value =
-                        paging?.Items ?? (object)DBNull.Value;
-
-                    cmd.Parameters.AddWithValue("@Search",
-    string.IsNullOrWhiteSpace(paging?.search)
-        ? (object)DBNull.Value
-        : paging.search);
-
+                    cmd.Parameters.Add("@PageNumber", SqlDbType.Int).Value = paging?.PageNumber ?? (object)DBNull.Value;
+                    cmd.Parameters.Add("@PageSize", SqlDbType.Int).Value = paging?.Items ?? (object)DBNull.Value;
+                    cmd.Parameters.AddWithValue("@Search", string.IsNullOrWhiteSpace(paging?.search) ? (object)DBNull.Value : paging.search);
 
                     await con.OpenAsync();
-
                     using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
                     {
                         while (await dr.ReadAsync())
                         {
-                            if (totalRecords == 0 && dr["TotalCount"] != DBNull.Value)
-                                totalRecords = Convert.ToInt32(dr["TotalCount"]);
+                            if (totalRecords == 0)
+                                totalRecords = dr.GetInt32Safe("TotalCount");
 
                             list.Add(new stateCountMain
                             {
-                                Id = Convert.ToInt32(dr["Id"]),
-                                StateId = Convert.ToInt32(dr["StateId"]),
-                                StateName = dr["StateName"].ToString(),
-                                Count = Convert.ToInt32(dr["Count"]),
-                                CreatedDate = dr["CreatedDate"] != DBNull.Value
-                                    ? Convert.ToDateTime(dr["CreatedDate"])
-                                    : (DateTime?)null,
-
-                                RemainingCount = Convert.ToInt32(dr["RemainingCount"])
-
+                                Id = dr.GetInt32Safe("Id"),
+                                StateId = dr.GetInt32Safe("StateId"),
+                                StateName = dr.GetStringSafe("StateName"),
+                                Count = dr.GetInt32Safe("Count"),
+                                CreatedDate = dr.GetDateTimeSafe("CreatedDate"),
+                                RemainingCount = dr.GetInt32Safe("RemainingCount")
                             });
                         }
                     }
@@ -330,19 +255,14 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     data = list,
                     totalRecords = totalRecords
                 };
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error fetching state counts", ex);
-            }
+            });
         }
 
         public async Task<List<State>> GetAllStateAsync()
         {
-            List<State> list = new List<State>();
-
-            try
+            return await ExecuteAsync(async () =>
             {
+                var list = new List<State>();
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_UserStateCount", con))
                 {
@@ -350,38 +270,31 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     cmd.Parameters.AddWithValue("@Action", "GetAllState");
 
                     await con.OpenAsync();
-
                     using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
                     {
                         while (await dr.ReadAsync())
                         {
                             list.Add(new State
                             {
-                                StateId = Convert.ToInt32(dr["StateId"]),
-                                StateName = dr["StateName"].ToString()
+                                StateId = dr.GetInt32Safe("StateId"),
+                                StateName = dr.GetStringSafe("StateName")
                             });
                         }
                     }
                 }
-
                 return list;
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error fetching states", ex);
-            }
+            });
         }
 
-
+        // ===== District Counts =====
         public async Task<int> SaveDistictAsync(DistrictCountModel model)
         {
-            try
+            return await ExecuteAsync(async () =>
             {
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_UserStateCount", con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
-
                     cmd.Parameters.AddWithValue("@Action", model.Id == 0 ? "addDistict" : "UpdateDistict");
                     cmd.Parameters.AddWithValue("@Id", model.Id);
                     cmd.Parameters.AddWithValue("@StateId", model.StateId);
@@ -392,8 +305,8 @@ namespace GlobalVidhanSabha.Models.AdminMain
 
                     if (model.Id == 0)
                     {
-                        var result = await cmd.ExecuteScalarAsync();
-                        return Convert.ToInt32(result);
+                        object result = await cmd.ExecuteScalarAsync();
+                        return (result != null && result != DBNull.Value) ? Convert.ToInt32(result) : 0;
                     }
                     else
                     {
@@ -401,22 +314,12 @@ namespace GlobalVidhanSabha.Models.AdminMain
                         return model.Id;
                     }
                 }
-            }
-            catch (SqlException ex)
-            {
-                // Throw with exact SQL message
-                throw new Exception(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.Message);
-            }
+            });
         }
-
 
         public async Task<bool> DeleteDistictAsync(int DistrictId)
         {
-            try
+            return await ExecuteAsync(async () =>
             {
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_UserStateCount", con))
@@ -429,16 +332,12 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     await cmd.ExecuteNonQueryAsync();
                     return true;
                 }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error deleting district count", ex);
-            }
+            });
         }
 
         public async Task<DistrictCountModel> GetDistictByIdAsync(int id)
         {
-            try
+            return await ExecuteAsync(async () =>
             {
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_UserStateCount", con))
@@ -450,31 +349,28 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     await con.OpenAsync();
                     using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
                     {
-                        if (!await dr.ReadAsync()) return null;
+                        if (!await dr.ReadAsync())
+                            return null;
 
                         return new DistrictCountModel
                         {
-                            Id = Convert.ToInt32(dr["Id"]),
-                            StateId = Convert.ToInt32(dr["StateId"]),
-                            DistrictId = Convert.ToInt32(dr["DistrictId"]),
-                            Count = Convert.ToInt32(dr["Count"])
+                            Id = dr.GetInt32Safe("Id"),
+                            StateId = dr.GetInt32Safe("StateId"),
+                            DistrictId = dr.GetInt32Safe("DistrictId"),
+                            Count = dr.GetInt32Safe("Count")
                         };
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error fetching district count by id", ex);
-            }
+            });
         }
 
         public async Task<PagedResult<DistrictCountModel>> GetAllDistictAsync(Pagination paging)
         {
-            int totalRecords = 0;
-            List<DistrictCountModel> list = new List<DistrictCountModel>();
-
-            try
+            return await ExecuteAsync(async () =>
             {
+                int totalRecords = 0;
+                var list = new List<DistrictCountModel>();
+
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_UserStateCount", con))
                 {
@@ -489,19 +385,18 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     {
                         while (await dr.ReadAsync())
                         {
-                            if (totalRecords == 0 && dr["TotalCount"] != DBNull.Value)
-                                totalRecords = Convert.ToInt32(dr["TotalCount"]);
+                            if (totalRecords == 0)
+                                totalRecords = dr.GetInt32Safe("TotalCount");
 
                             list.Add(new DistrictCountModel
                             {
-                                Id = Convert.ToInt32(dr["Id"]),
-                                StateId = Convert.ToInt32(dr["StateId"]),
-                                DistrictId = Convert.ToInt32(dr["DistrictId"]),
-                                DistrictName = dr["DistrictName"].ToString(),
-                                StateName = dr["StateName"].ToString(),
-                                Count = Convert.ToInt32(dr["Count"]),
-
-                                RemainingCount = Convert.ToInt32(dr["RemainingCount"])
+                                Id = dr.GetInt32Safe("Id"),
+                                StateId = dr.GetInt32Safe("StateId"),
+                                DistrictId = dr.GetInt32Safe("DistrictId"),
+                                DistrictName = dr.GetStringSafe("DistrictName"),
+                                StateName = dr.GetStringSafe("StateName"),
+                                Count = dr.GetInt32Safe("Count"),
+                                RemainingCount = dr.GetInt32Safe("RemainingCount")
                             });
                         }
                     }
@@ -512,21 +407,15 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     data = list,
                     totalRecords = totalRecords
                 };
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error fetching all district counts", ex);
-            }
+            });
         }
 
         public async Task<List<DistrictModel>> GetDistrictsByStateAsync(int stateId)
         {
-            var list = new List<DistrictModel>();
-            SqlConnection con = null;
-
-            try
+            return await ExecuteAsync(async () =>
             {
-                con = new SqlConnection(conn);
+                var list = new List<DistrictModel>();
+                using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_UserStateCount", con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
@@ -534,50 +423,39 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     cmd.Parameters.AddWithValue("@StateId", stateId);
 
                     await con.OpenAsync();
-
                     using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
                     {
                         while (await dr.ReadAsync())
                         {
                             list.Add(new DistrictModel
                             {
-                                DistrictId = Convert.ToInt32(dr["DistrictId"]),
-                                DistrictName = dr["DistrictName"].ToString()
+                                DistrictId = dr.GetInt32Safe("DistrictId"),
+                                DistrictName = dr.GetStringSafe("DistrictName")
                             });
                         }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-          
-                throw new Exception($"Error fetching districts for StateId {stateId}", ex);
-            }           
-            return list;
+                return list;
+            });
         }
 
+        // ===== Vidhan Sabha Registration =====
         public async Task<int> SaveVidhanSabhaRegistrationAsync(VidhanSabhaRegister model)
         {
-            try
+            return await ExecuteAsync(async () =>
             {
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_DesignationType_CRUD", con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
 
-
-                    string generatedPassword = null;                  
-
+                    string generatedPassword = null;
                     if (model.Prabhari)
                     {
-                        generatedPassword = PasswordGenerator.GeneratePassword(
-                            model.Name,
-                            model.PhoneNo
-                        );
+                        generatedPassword = PasswordGenerator.GeneratePassword(model.Name, model.PhoneNo);
                     }
-                    cmd.Parameters.AddWithValue("@Action",
-                                 model.Id > 0 ? "UpdateVidhanSabhaRagitration" : "VidhanSabhaRagitration");
-                    //cmd.Parameters.AddWithValue("@Action", "VidhanSabhaRagitration");
+
+                    cmd.Parameters.AddWithValue("@Action", model.Id > 0 ? "UpdateVidhanSabhaRagitration" : "VidhanSabhaRagitration");
                     cmd.Parameters.AddWithValue("@Id", model.Id);
                     cmd.Parameters.AddWithValue("@VidhanSabhaName", model.VidhanSabhaName);
                     cmd.Parameters.AddWithValue("@Prabhari", model.Prabhari);
@@ -592,162 +470,88 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     cmd.Parameters.AddWithValue("@Education", (object)model.Education ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@Address", (object)model.Address ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@Profession", (object)model.Profession ?? DBNull.Value);
-                    // FIX: Add this line
                     cmd.Parameters.AddWithValue("@UserName", (object)model.Email ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@Password", (object)generatedPassword ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Role", "Prabhari");
+                    cmd.Parameters.AddWithValue("@Role", "VidhanSabhaPrabhari");
 
                     await con.OpenAsync();
-
-                    int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                    object result = await cmd.ExecuteScalarAsync();
+                    int newId = (result != null && result != DBNull.Value) ? Convert.ToInt32(result) : 0;
 
                     if (model.Prabhari && newId > 0)
                     {
-                        await EmailService.SendLoginEmailAsync(
-                            model.Email,
-                            model.Email,
-                            generatedPassword
-                        );
+                        await EmailService.SendLoginEmailAsync(model.Email, model.PhoneNo, generatedPassword);
                     }
 
                     return newId;
                 }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.Message);
-            }
+            });
         }
-
-
-        //public async Task<int> SaveVidhanSabhaRegistrationAsync(VidhanSabhaRegister model)
-        //{
-        //    try
-        //    {
-        //        using (SqlConnection con = new SqlConnection(conn))
-        //        using (SqlCommand cmd = new SqlCommand("usp_DesignationType_CRUD", con))
-        //        {
-        //            cmd.CommandType = CommandType.StoredProcedure;
-
-        //            cmd.Parameters.AddWithValue("@Action",
-        //                model.Id > 0 ? "UpdateVidhanSabhaRagitration" : "VidhanSabhaRagitration");
-
-        //            cmd.Parameters.AddWithValue("@Id", model.Id);
-        //            cmd.Parameters.AddWithValue("@VidhanSabhaName", model.VidhanSabhaName);
-        //            cmd.Parameters.AddWithValue("@Prabhari", model.Prabhari);
-
-        //            cmd.Parameters.AddWithValue("@Name", (object)model.Name ?? DBNull.Value);
-        //            cmd.Parameters.AddWithValue("@Email", (object)model.Email ?? DBNull.Value);
-        //            cmd.Parameters.AddWithValue("@PhoneNo", (object)model.PhoneNo ?? DBNull.Value);
-        //            //cmd.Parameters.AddWithValue("@Category", (object)model.Category ?? DBNull.Value);
-        //            //cmd.Parameters.AddWithValue("@Caste", (object)model.Caste ?? DBNull.Value);
-
-        //            cmd.Parameters.Add("@Category", SqlDbType.Int)
-        //               .Value = (object)model.Category ?? DBNull.Value; 
-
-        //            cmd.Parameters.Add("@Caste", SqlDbType.Int)
-        //                .Value = (object)model.Caste ?? DBNull.Value;
-
-        //            cmd.Parameters.AddWithValue("@StateId", (object)model.StateId ?? DBNull.Value);
-        //            cmd.Parameters.AddWithValue("@DistrictId", (object)model.DistrictId ?? DBNull.Value);
-
-        //            cmd.Parameters.AddWithValue("@Profile", (object)model.Profile ?? DBNull.Value);
-        //            cmd.Parameters.AddWithValue("@Education", (object)model.Education ?? DBNull.Value);
-        //            cmd.Parameters.AddWithValue("@Address", (object)model.Address ?? DBNull.Value);
-        //            cmd.Parameters.AddWithValue("@Profession", (object)model.Profession ?? DBNull.Value);
-
-        //            await con.OpenAsync();
-
-        //            // 🔹 INSERT
-        //            if (model.Id == 0)
-        //            {
-        //                object result = await cmd.ExecuteScalarAsync();
-
-        //                if (result == null || result == DBNull.Value)
-        //                    return 0;
-
-        //                return Convert.ToInt32(result);
-        //            }
-        //            // 🔹 UPDATE
-        //            else
-        //            {
-        //                await cmd.ExecuteNonQueryAsync();
-        //                return model.Id;
-        //            }
-        //        }
-        //    }
-        //    catch (SqlException ex)
-        //    {
-
-        //        throw;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        // General error
-        //        throw new Exception("Error while saving VidhanSabha registration: " + ex.Message);
-        //    }
-        //}
 
         public async Task<List<CasteCategory>> GetCasteCategoryAsync()
         {
-            var list = new List<CasteCategory>();
-
-            using (SqlConnection con = new SqlConnection(conn))
-            using (SqlCommand cmd = new SqlCommand("usp_DesignationType_CRUD", con))
+            return await ExecuteAsync(async () =>
             {
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@Action", "GetCasteCategory");
-
-                await con.OpenAsync();
-                using (var dr = await cmd.ExecuteReaderAsync())
+                var list = new List<CasteCategory>();
+                using (SqlConnection con = new SqlConnection(conn))
+                using (SqlCommand cmd = new SqlCommand("usp_DesignationType_CRUD", con))
                 {
-                    while (await dr.ReadAsync())
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@Action", "GetCasteCategory");
+
+                    await con.OpenAsync();
+                    using (var dr = await cmd.ExecuteReaderAsync())
                     {
-                        list.Add(new CasteCategory
+                        while (await dr.ReadAsync())
                         {
-                            Id = Convert.ToInt32(dr["Id"]),
-                            Name = dr["CategoryName"].ToString()
-                        });
+                            list.Add(new CasteCategory
+                            {
+                                Id = dr.GetInt32Safe("Id"),
+                                Name = dr.GetStringSafe("CategoryName")
+                            });
+                        }
                     }
                 }
-            }
-            return list;
+                return list;
+            });
         }
 
         public async Task<List<CasteCategory>> GetSubCasteByCategoryAsync(int categoryId)
         {
-            var list = new List<CasteCategory>();
-
-            using (SqlConnection con = new SqlConnection(conn))
-            using (SqlCommand cmd = new SqlCommand("usp_DesignationType_CRUD", con))
+            return await ExecuteAsync(async () =>
             {
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@Action", "GetSubCasteByCategory");
-                cmd.Parameters.AddWithValue("@categoryId", categoryId);
-
-                await con.OpenAsync();
-                using (var dr = await cmd.ExecuteReaderAsync())
+                var list = new List<CasteCategory>();
+                using (SqlConnection con = new SqlConnection(conn))
+                using (SqlCommand cmd = new SqlCommand("usp_DesignationType_CRUD", con))
                 {
-                    while (await dr.ReadAsync())
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@Action", "GetSubCasteByCategory");
+                    cmd.Parameters.AddWithValue("@categoryId", categoryId);
+
+                    await con.OpenAsync();
+                    using (var dr = await cmd.ExecuteReaderAsync())
                     {
-                        list.Add(new CasteCategory
+                        while (await dr.ReadAsync())
                         {
-                            Id = Convert.ToInt32(dr["Id"]),
-                            Name = dr["SubCasteName"].ToString()
-                        });
+                            list.Add(new CasteCategory
+                            {
+                                Id = dr.GetInt32Safe("Id"),
+                                Name = dr.GetStringSafe("SubCasteName")
+                            });
+                        }
                     }
                 }
-            }
-            return list;
+                return list;
+            });
         }
 
-        public async Task<PagedResult<VidhanSabhaRegister>> GetAllVidhanSabhaAsync(Pagination paging, bool? Prabhari = null)
-       {
-            int totalRecords = 0;
-            List<VidhanSabhaRegister> list = new List<VidhanSabhaRegister>();
-
-            try
+        public async Task<PagedResult<VidhanSabhaRegister>> GetAllVidhanSabhaAsync(Pagination paging, bool? Prabhari = null, int? stateId = null)
+        {
+            return await ExecuteAsync(async () =>
             {
+                int totalRecords = 0;
+                var list = new List<VidhanSabhaRegister>();
+
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_DesignationType_CRUD", con))
                 {
@@ -755,48 +559,39 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     cmd.Parameters.AddWithValue("@Action", "getAllVidhanSabha");
                     cmd.Parameters.AddWithValue("@PageNumber", paging.PageNumber);
                     cmd.Parameters.AddWithValue("@PageSize", paging.Items);
-                    cmd.Parameters.AddWithValue("@Search",
-                        string.IsNullOrWhiteSpace(paging.search) ? null : paging.search);
-
-                    cmd.Parameters.Add("@Prabhari", SqlDbType.Bit)
-                     .Value = (object)Prabhari ?? DBNull.Value;
+                    cmd.Parameters.AddWithValue("@Search", string.IsNullOrWhiteSpace(paging.search) ? null : paging.search);
+                    cmd.Parameters.Add("@StateId", SqlDbType.Int).Value = (object)stateId ?? DBNull.Value;
+                    cmd.Parameters.Add("@Prabhari", SqlDbType.Bit).Value = (object)Prabhari ?? DBNull.Value;
 
                     await con.OpenAsync();
-
                     using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
                     {
                         while (await dr.ReadAsync())
                         {
-                            if (totalRecords == 0 && dr["TotalCount"] != DBNull.Value)
-                                totalRecords = Convert.ToInt32(dr["TotalCount"]);
+                            if (totalRecords == 0)
+                                totalRecords = dr.GetInt32Safe("TotalCount");
 
                             list.Add(new VidhanSabhaRegister
                             {
-                                Id = Convert.ToInt32(dr["Id"]),
-
-                                //StateId = Convert.ToInt32(dr["StateId"]),
-                                //DistrictId = Convert.ToInt32(dr["DistrictId"]),
-
-                                StateId = dr["StateId"] as int?,
-                                DistrictId = dr["DistrictId"] as int?,
-
-                                VidhanSabhaName = dr["VidhanSabhaName"].ToString(),
-                                Prabhari = Convert.ToBoolean(dr["Prabhari"]),
-                                Name = dr["Name"] as string,
-                                Email = dr["Email"] as string,
-                                PhoneNo = dr["PhoneNo"] as string,
-                                Category = dr["Category"] as int?,
-                                Caste = dr["Caste"] as int?,
-                                Profile = dr["Profile"] as string,
-                                Education = dr["Education"] as string,
-                                Address = dr["Address"] as string,
-                                Profession = dr["Profession"] as string,
-                                CreatedAt = Convert.ToDateTime(dr["CreatedAt"]),
-                                UpdatedAt = dr["UpdatedAt"] as DateTime?,
-                                Status = Convert.ToBoolean(dr["Status"]),
-
-                                DistrictName = dr["DistrictName"] as string,   
-                                StateName = dr["StateName"] as string
+                                Id = dr.GetInt32Safe("Id"),
+                                StateId = dr.GetNullableInt32Safe("StateId"),
+                                DistrictId = dr.GetNullableInt32Safe("DistrictId"),
+                                VidhanSabhaName = dr.GetStringSafe("VidhanSabhaName"),
+                                Prabhari = dr.GetBoolSafe("Prabhari"),
+                                Name = dr.GetStringSafe("Name"),
+                                Email = dr.GetStringSafe("Email"),
+                                PhoneNo = dr.GetStringSafe("PhoneNo"),
+                                Category = dr.GetNullableInt32Safe("Category"),
+                                Caste = dr.GetNullableInt32Safe("Caste"),
+                                Profile = dr.GetStringSafe("Profile"),
+                                Education = dr.GetStringSafe("Education"),
+                                Address = dr.GetStringSafe("Address"),
+                                Profession = dr.GetStringSafe("Profession"),
+                                CreatedAt = dr.GetDateTimeSafe("CreatedAt") ?? DateTime.MinValue,
+                                UpdatedAt = dr.GetDateTimeSafe("UpdatedAt"),
+                                Status = dr.GetBoolSafe("Status"),
+                                DistrictName = dr.GetStringSafe("DistrictName"),
+                                StateName = dr.GetStringSafe("StateName")
                             });
                         }
                     }
@@ -807,17 +602,12 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     data = list,
                     totalRecords = totalRecords
                 };
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error fetching VidhanSabha list", ex);
-            }
+            });
         }
 
-        // GET VIDHANSABHA BY ID
         public async Task<VidhanSabhaRegister> GetVidhanSabhaByIdAsync(int id)
         {
-            try
+            return await ExecuteAsync(async () =>
             {
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_DesignationType_CRUD", con))
@@ -834,52 +624,36 @@ namespace GlobalVidhanSabha.Models.AdminMain
 
                         return new VidhanSabhaRegister
                         {
-                            Id = Convert.ToInt32(dr["Id"]),
-                            VidhanSabhaName = dr["VidhanSabhaName"].ToString(),
-                            Prabhari = Convert.ToBoolean(dr["Prabhari"]),
-                            Name = dr["Name"] as string,
-                            Email = dr["Email"] as string,
-                            PhoneNo = dr["PhoneNo"] as string,
-
-                            StateId = dr["StateId"] as int?,
-                            DistrictId = dr["DistrictId"] as int?,
-
-                            StateName = dr["StateName"] as string,
-                            DistrictName = dr["DistrictName"] as string,
-
-                            Category = dr["Category"] as int?,
-                            CategoryName = dr["CategoryName"] as string,
-                            Caste = dr["Caste"] as int?,
-                            SubCasteName = dr["SubCasteName"] as string,
-
-                            Profile = dr["UserProfile"] as string,
-                            Education = dr["Education"] as string,
-                            Address = dr["Address"] as string,
-                            Profession = dr["Profession"] as string,
-                            CreatedAt = Convert.ToDateTime(dr["CreatedAt"]),
-                            UpdatedAt = dr["UpdatedAt"] as DateTime?,
-                            Status = Convert.ToBoolean(dr["Status"])
+                            Id = dr.GetInt32Safe("Id"),
+                            VidhanSabhaName = dr.GetStringSafe("VidhanSabhaName"),
+                            Prabhari = dr.GetBoolSafe("Prabhari"),
+                            Name = dr.GetStringSafe("Name"),
+                            Email = dr.GetStringSafe("Email"),
+                            PhoneNo = dr.GetStringSafe("PhoneNo"),
+                            StateId = dr.GetNullableInt32Safe("StateId"),
+                            DistrictId = dr.GetNullableInt32Safe("DistrictId"),
+                            StateName = dr.GetStringSafe("StateName"),
+                            DistrictName = dr.GetStringSafe("DistrictName"),
+                            Category = dr.GetNullableInt32Safe("Category"),
+                            CategoryName = dr.GetStringSafe("CategoryName"),
+                            Caste = dr.GetNullableInt32Safe("Caste"),
+                            SubCasteName = dr.GetStringSafe("SubCasteName"),
+                            Profile = dr.GetStringSafe("UserProfile"),
+                            Education = dr.GetStringSafe("Education"),
+                            Address = dr.GetStringSafe("Address"),
+                            Profession = dr.GetStringSafe("Profession"),
+                            CreatedAt = dr.GetDateTimeSafe("CreatedAt") ?? DateTime.MinValue,
+                            UpdatedAt = dr.GetDateTimeSafe("UpdatedAt"),
+                            Status = dr.GetBoolSafe("Status")
                         };
                     }
                 }
-            }
-            catch (SqlException sqlEx)
-            {
-                throw new Exception("SQL error while fetching VidhanSabha by ID: " + sqlEx.Message, sqlEx);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error while fetching VidhanSabha by ID: " + ex.Message, ex);
-            }
+            });
         }
 
-
-        // SOFT DELETE VIDHANSABHA
         public async Task<bool> DeleteVidhanSabhaAsync(int id)
         {
-           
-
-            try
+            return await ExecuteAsync(async () =>
             {
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_DesignationType_CRUD", con))
@@ -890,27 +664,16 @@ namespace GlobalVidhanSabha.Models.AdminMain
 
                     await con.OpenAsync();
                     await cmd.ExecuteNonQueryAsync();
-
                     return true;
                 }
-            }
-            catch (SqlException sqlEx)
-            {
-                throw new Exception("SQL error while deleting VidhanSabha: " + sqlEx.Message, sqlEx);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error while deleting VidhanSabha: " + ex.Message, ex);
-            }
-           
+            });
         }
 
         public async Task<List<DistrictCountModel>> GetAllDistrictsDataByStateId(int stateId)
         {
-            var districts = new List<DistrictCountModel>();
-
-            try
+            return await ExecuteAsync(async () =>
             {
+                var districts = new List<DistrictCountModel>();
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_UserStateCount", con))
                 {
@@ -919,105 +682,86 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     cmd.Parameters.AddWithValue("@StateId", stateId);
 
                     await con.OpenAsync();
-
                     using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
                     {
                         while (await dr.ReadAsync())
                         {
                             districts.Add(new DistrictCountModel
                             {
-                                Id = Convert.ToInt32(dr["Id"]),
-                                StateId = Convert.ToInt32(dr["StateId"]),
-                                DistrictId = Convert.ToInt32(dr["DistrictId"]),
-                                DistrictName = dr["DistrictName"].ToString(),
-                                StateName = dr["StateName"].ToString(),
-                                Count = Convert.ToInt32(dr["Count"]),
-
-                                RemainingCount= Convert.ToInt32(dr["RemainingCount"]),
-
-
+                                Id = dr.GetInt32Safe("Id"),
+                                StateId = dr.GetInt32Safe("StateId"),
+                                DistrictId = dr.GetInt32Safe("DistrictId"),
+                                DistrictName = dr.GetStringSafe("DistrictName"),
+                                StateName = dr.GetStringSafe("StateName"),
+                                Count = dr.GetInt32Safe("Count"),
+                                RemainingCount = dr.GetInt32Safe("RemainingCount")
                             });
                         }
                     }
                 }
-            }
-            catch (SqlException ex)
-            {
-                // Log DB specific error
-                throw new Exception("Database error while fetching districts by state.", ex);
-            }
-            catch (Exception ex)
-            {
-                // Log general error
-                throw new Exception("Unexpected error occurred while fetching districts.", ex);
-            }
-
-            return districts;
+                return districts;
+            });
         }
 
         public async Task<Dashboard> GetDashboardCountsAsync()
         {
-            // ek hi object me combine kar rahe hain
-            var dashboard = new Dashboard();
-
-            using (SqlConnection con = new SqlConnection(conn))
+            return await ExecuteAsync(async () =>
             {
-                await con.OpenAsync();
-
-                // Total VidhanSabha
-                using (SqlCommand cmd = new SqlCommand("usp_Dashboard", con))
+                var dashboard = new Dashboard();
+                using (SqlConnection con = new SqlConnection(conn))
                 {
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@Action", "TotalVidhanSabhaCount");
-                    var result = await cmd.ExecuteScalarAsync();
-                    dashboard.TotalVidhanSabhaCount = result != null ? Convert.ToInt32(result) : 0;
-                }
+                    await con.OpenAsync();
 
-                // With Prabhari
-                using (SqlCommand cmd = new SqlCommand("usp_Dashboard", con))
-                {
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@Action", "TotalVidhanSabhaWithPrabhari");
-                    var result = await cmd.ExecuteScalarAsync();
-                    dashboard.TotalVidhanSabhaWithPrabhari = result != null ? Convert.ToInt32(result) : 0;
-                }
+                    using (SqlCommand cmd = new SqlCommand("usp_Dashboard", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@Action", "TotalStatePrabhari");
+                        object result = await cmd.ExecuteScalarAsync();
+                        dashboard.TotalStatePrabhari = (result != null && result != DBNull.Value) ? Convert.ToInt32(result) : 0;
+                    }
 
-                // Without Prabhari
-                using (SqlCommand cmd = new SqlCommand("usp_Dashboard", con))
-                {
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@Action", "TotalVidhanSabhaWithoutPrabhari");
-                    var result = await cmd.ExecuteScalarAsync();
-                    dashboard.TotalVidhanSabhaWithoutPrabhari = result != null ? Convert.ToInt32(result) : 0;
-                }
+                    using (SqlCommand cmd = new SqlCommand("usp_Dashboard", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@Action", "TotalVidhanSabhaWithoutPrabhari");
+                        object result = await cmd.ExecuteScalarAsync();
+                        dashboard.TotalVidhanSabhaWithoutPrabhari = (result != null && result != DBNull.Value) ? Convert.ToInt32(result) : 0;
+                    }
 
-                using (SqlCommand cmd = new SqlCommand("usp_Dashboard", con))
-                {
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@Action", "TotalUsedStates");
-                    var result = await cmd.ExecuteScalarAsync();
-                    dashboard.TotalUsedStates = result != null ? Convert.ToInt32(result) : 0;
-                }
+                    using (SqlCommand cmd = new SqlCommand("usp_Dashboard", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@Action", "TotalUsedStates");
+                        object result = await cmd.ExecuteScalarAsync();
+                        dashboard.TotalUsedStates = (result != null && result != DBNull.Value) ? Convert.ToInt32(result) : 0;
+                    }
 
-                using (SqlCommand cmd = new SqlCommand("usp_Dashboard", con))
-                {
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@Action", "TotalUsedDistrict");
-                    var result = await cmd.ExecuteScalarAsync();
-                    dashboard.TotalUsedDistrict = result != null ? Convert.ToInt32(result) : 0;
+                    using (SqlCommand cmd = new SqlCommand("usp_Dashboard", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@Action", "TotalUsedDistrict");
+                        object result = await cmd.ExecuteScalarAsync();
+                        dashboard.TotalUsedDistrict = (result != null && result != DBNull.Value) ? Convert.ToInt32(result) : 0;
+                    }
+                    using (SqlCommand cmd = new SqlCommand("usp_Dashboard", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@Action", "TotalDesignationName");
+                        object result = await cmd.ExecuteScalarAsync();
+                        dashboard.TotalDesignationName = (result != null && result != DBNull.Value) ? Convert.ToInt32(result) : 0;
+                    }
                 }
-            }
-
-            return dashboard;
+                return dashboard;
+            });
         }
 
         public async Task<PagedResult<VidhanSabhaRegister>> GetVidhanSabhaByStateIdAsync(int DistrictId, Pagination paging)
         {
-            int totalRecords = 0;
-            var list = new List<VidhanSabhaRegister>();
-
-            try
+            return await ExecuteAsync(async () =>
             {
+                int totalRecords = 0;
+                var list = new List<VidhanSabhaRegister>();
+
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("usp_DesignationType_CRUD", con))
                 {
@@ -1026,208 +770,171 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     cmd.Parameters.AddWithValue("@DistrictId", DistrictId);
                     cmd.Parameters.AddWithValue("@PageNumber", paging.PageNumber);
                     cmd.Parameters.AddWithValue("@PageSize", paging.Items);
-                    cmd.Parameters.AddWithValue("@Search",
-                        string.IsNullOrWhiteSpace(paging.search) ? null : paging.search);
+                    cmd.Parameters.AddWithValue("@Search", string.IsNullOrWhiteSpace(paging.search) ? null : paging.search);
 
                     await con.OpenAsync();
-
                     using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
                     {
                         while (await dr.ReadAsync())
                         {
-                            if (totalRecords == 0 && dr["TotalCount"] != DBNull.Value)
-                                totalRecords = Convert.ToInt32(dr["TotalCount"]);
+                            if (totalRecords == 0)
+                                totalRecords = dr.GetInt32Safe("TotalCount");
 
                             list.Add(new VidhanSabhaRegister
                             {
-                                Id = Convert.ToInt32(dr["Id"]),
-                                VidhanSabhaName = dr["VidhanSabhaName"].ToString(),
-                                Prabhari = Convert.ToBoolean(dr["Prabhari"]),
-                                Name = dr["Name"] as string,
-                                Email = dr["Email"] as string,
-                                PhoneNo = dr["PhoneNo"] as string,
-                                Category = dr["Category"] as int?,
-                                Caste = dr["Caste"] as int?,
-                                Profile = dr["Profile"] as string,
-                                Education = dr["Education"] as string,
-                                Address = dr["Address"] as string,
-                                Profession = dr["Profession"] as string,
-                                CreatedAt = Convert.ToDateTime(dr["CreatedAt"]),
-                                UpdatedAt = dr["UpdatedAt"] as DateTime?,
-                                Status = Convert.ToBoolean(dr["Status"]),
-
-                                DistrictName = dr["DistrictName"] as string,
-                                StateName = dr["StateName"] as string
+                                Id = dr.GetInt32Safe("Id"),
+                                VidhanSabhaName = dr.GetStringSafe("VidhanSabhaName"),
+                                Prabhari = dr.GetBoolSafe("Prabhari"),
+                                Name = dr.GetStringSafe("Name"),
+                                Email = dr.GetStringSafe("Email"),
+                                PhoneNo = dr.GetStringSafe("PhoneNo"),
+                                Category = dr.GetNullableInt32Safe("Category"),
+                                Caste = dr.GetNullableInt32Safe("Caste"),
+                                Profile = dr.GetStringSafe("Profile"),
+                                Education = dr.GetStringSafe("Education"),
+                                Address = dr.GetStringSafe("Address"),
+                                Profession = dr.GetStringSafe("Profession"),
+                                CreatedAt = dr.GetDateTimeSafe("CreatedAt") ?? DateTime.MinValue,
+                                UpdatedAt = dr.GetDateTimeSafe("UpdatedAt"),
+                                Status = dr.GetBoolSafe("Status"),
+                                DistrictName = dr.GetStringSafe("DistrictName"),
+                                StateName = dr.GetStringSafe("StateName")
                             });
                         }
-                        return new PagedResult<VidhanSabhaRegister>
-                        {
-                            data = list,
-                            totalRecords = totalRecords
-                        };
                     }
                 }
-            }
-            catch (SqlException ex)
-            {
-                throw new Exception("Database error while fetching VidhanSabha by StateId", ex);
-            }
 
-
+                return new PagedResult<VidhanSabhaRegister>
+                {
+                    data = list,
+                    totalRecords = totalRecords
+                };
+            });
         }
 
         public async Task<List<KeyValuePair<string, int>>> GetStateWiseVidhanSabhaChartAsync()
         {
-            var list = new List<KeyValuePair<string, int>>();
-
-            using (SqlConnection con = new SqlConnection(conn))
-            using (SqlCommand cmd = new SqlCommand("usp_Dashboard", con))
+            return await ExecuteAsync(async () =>
             {
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@Action", "ChartDataGetStateWiseVidhanSabha");
-
-                await con.OpenAsync();
-
-                using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
-                {
-                    while (await dr.ReadAsync())
-                    {
-                        list.Add(new KeyValuePair<string, int>(
-                            dr["StateName"].ToString(),
-                            Convert.ToInt32(dr["TotalVidhanSabha"])
-                        ));
-                    }
-                }
-            }
-            return list;
-        }
-
-        public async Task<List<KeyValuePair<string, int>>> GetDistrictWiseVidhanSabhaChartAsync()
-        {
-            var list = new List<KeyValuePair<string, int>>();
-
-            using (SqlConnection con = new SqlConnection(conn))
-            using (SqlCommand cmd = new SqlCommand("usp_Dashboard", con))
-            {
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@Action", "ChartDataGetDistrictWiseVidhanSabha");
-
-                await con.OpenAsync();
-
-                using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
-                {
-                    while (await dr.ReadAsync())
-                    {
-                        list.Add(new KeyValuePair<string, int>(
-                            dr["DistrictName"].ToString(),
-                            Convert.ToInt32(dr["TotalVidhanSabha"])
-                        ));
-                    }
-                }
-            }
-            return list;
-        }
-
-
-        public async Task<List<designationMain>> GetDesignationTypeAsync()
-        {
-            var list = new List<designationMain>();
-
-            using (SqlConnection con = new SqlConnection(conn))
-            using (SqlCommand cmd = new SqlCommand("usp_DesignationType_CRUD", con))
-            {
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@Action", "GetdesignationType");
-
-                await con.OpenAsync();
-
-                using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
-                {
-                    while (await dr.ReadAsync())
-                    {
-                        list.Add(new designationMain
-                        {
-                            DesignationId = dr["DesignationId"] != DBNull.Value
-                                ? Convert.ToInt32(dr["DesignationId"]) : 0,                         
-
-                            DesignationType = dr["DesignationType"]?.ToString(),
-
-                          
-                        });
-                    }
-                }
-            }
-
-            return list;
-        }
-
-        //State Prabhari Service
-
-        // STATE PRABHARI SERVICE
-        public async Task<PagedResult<StatePrabhariModel>> GetAllStatePrabhariAsync(Pagination paging)
-        {
-            int totalRecords = 0;
-            var list = new List<StatePrabhariModel>();
-
-            try
-            {
+                var list = new List<KeyValuePair<string, int>>();
                 using (SqlConnection con = new SqlConnection(conn))
-                using (SqlCommand cmd = new SqlCommand("sp_StatePrabhari", con))
+                using (SqlCommand cmd = new SqlCommand("usp_Dashboard", con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
-
-                    cmd.Parameters.AddWithValue("@Action", "GETALLSTATEPRABHARI");
-                    cmd.Parameters.AddWithValue("@PageNumber", paging.PageNumber);
-                    cmd.Parameters.AddWithValue("@PageSize", paging.Items);
-                    cmd.Parameters.AddWithValue("@Search",
-                        string.IsNullOrWhiteSpace(paging.search)
-                        ? (object)DBNull.Value
-                        : paging.search);
+                    cmd.Parameters.AddWithValue("@Action", "ChartDataGetStateWiseVidhanSabha");
 
                     await con.OpenAsync();
-
                     using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
                     {
                         while (await dr.ReadAsync())
                         {
-                            // Total count
-                            if (totalRecords == 0 && dr["TotalCount"] != DBNull.Value)
-                                totalRecords = Convert.ToInt32(dr["TotalCount"]);
+                            list.Add(new KeyValuePair<string, int>(
+                                dr.GetStringSafe("StateName"),
+                                dr.GetInt32Safe("TotalVidhanSabha")
+                            ));
+                        }
+                    }
+                }
+                return list;
+            });
+        }
+
+        public async Task<List<KeyValuePair<string, int>>> GetDistrictWiseVidhanSabhaChartAsync(int? StateId)
+        {
+            return await ExecuteAsync(async () =>
+            {
+                var list = new List<KeyValuePair<string, int>>();
+                using (SqlConnection con = new SqlConnection(conn))
+                using (SqlCommand cmd = new SqlCommand("usp_Dashboard", con))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@Action", "ChartDataGetDistrictWiseVidhanSabha");
+                    cmd.Parameters.AddWithValue("@StateId", StateId);
+
+                    await con.OpenAsync();
+                    using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await dr.ReadAsync())
+                        {
+                            list.Add(new KeyValuePair<string, int>(
+                                dr.GetStringSafe("DistrictName"),
+                                dr.GetInt32Safe("TotalVidhanSabha")
+                            ));
+                        }
+                    }
+                }
+                return list;
+            });
+        }
+
+        public async Task<List<designationType>> GetDesignationTypeAsync()
+        {
+            return await ExecuteAsync(async () =>
+            {
+                var list = new List<designationType>();
+                using (SqlConnection con = new SqlConnection(conn))
+                using (SqlCommand cmd = new SqlCommand("usp_DesignationType_CRUD", con))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@Action", "GetdesignationType");
+
+                    await con.OpenAsync();
+                    using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await dr.ReadAsync())
+                        {
+                            list.Add(new designationType
+                            {
+                                DesignationId = dr.GetInt32Safe("DesignationId"),
+                                DesignationType = dr.GetStringSafe("DesignationType")
+                            });
+                        }
+                    }
+                }
+                return list;
+            });
+        }
+
+        // ===== State Prabhari =====
+        public async Task<PagedResult<StatePrabhariModel>> GetAllStatePrabhariAsync(Pagination paging)
+        {
+            return await ExecuteAsync(async () =>
+            {
+                int totalRecords = 0;
+                var list = new List<StatePrabhariModel>();
+
+                using (SqlConnection con = new SqlConnection(conn))
+                using (SqlCommand cmd = new SqlCommand("sp_StatePrabhari", con))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@Action", "GETALLSTATEPRABHARI");
+                    cmd.Parameters.AddWithValue("@PageNumber", paging.PageNumber);
+                    cmd.Parameters.AddWithValue("@PageSize", paging.Items);
+                    cmd.Parameters.AddWithValue("@Search", string.IsNullOrWhiteSpace(paging.search) ? (object)DBNull.Value : paging.search);
+
+                    await con.OpenAsync();
+                    using (SqlDataReader dr = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await dr.ReadAsync())
+                        {
+                            if (totalRecords == 0)
+                                totalRecords = dr.GetInt32Safe("TotalCount");
 
                             list.Add(new StatePrabhariModel
                             {
-                                Id = Convert.ToInt32(dr["Id"]),
-
-                                // Stored procedure me column name "state" hai
-                                State = dr["state"] != DBNull.Value
-                                        ? Convert.ToInt32(dr["state"])
-                                        : (int?)null,
-
-                                StateName = dr["StateName"] as string,
-
-                                PrabhariName = dr["PrabhariName"] as string,
-
-                                Email = dr["Email"] as string,
-
-                                PhoneNo = dr["PhoneNo"] as string,
-
-                                Category = dr["Category"] != DBNull.Value
-                                            ? Convert.ToInt32(dr["Category"])
-                                            : (int?)null,
-
-                                CategoryName = dr["CategoryName"] as string,
-
-                                SubCaste = dr["SubCaste"] != DBNull.Value
-                                            ? Convert.ToInt32(dr["SubCaste"])
-                                            : (int?)null,
-
-                                SubCasteName = dr["SubCasteName"] as string,
-
-                                Address = dr["Address"] as string,
-                                Profession = dr["Profession"] as string,
-                                Education = dr["Education"] as string,
-
-
+                                Id = dr.GetInt32Safe("Id"),
+                                State = dr.GetNullableInt32Safe("state"),
+                                StateName = dr.GetStringSafe("StateName"),
+                                PrabhariName = dr.GetStringSafe("PrabhariName"),
+                                Email = dr.GetStringSafe("Email"),
+                                PhoneNo = dr.GetStringSafe("PhoneNo"),
+                                Category = dr.GetNullableInt32Safe("Category"),
+                                CategoryName = dr.GetStringSafe("CategoryName"),
+                                SubCaste = dr.GetNullableInt32Safe("SubCaste"),
+                                SubCasteName = dr.GetStringSafe("SubCasteName"),
+                                Address = dr.GetStringSafe("Address"),
+                                Profession = dr.GetStringSafe("Profession"),
+                                Education = dr.GetStringSafe("Education")
                             });
                         }
                     }
@@ -1238,68 +945,51 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     data = list,
                     totalRecords = totalRecords
                 };
-            }
-            catch (SqlException ex)
-            {
-                throw new Exception("Database error while fetching StatePrabhari", ex);
-            }
+            });
         }
-
 
         public async Task<StatePrabhariModel> GetStatePrabhariByIdAsync(int id)
         {
-            StatePrabhariModel model = null;
-
-            try
+            return await ExecuteAsync(async () =>
             {
+                StatePrabhariModel model = null;
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("sp_StatePrabhari", con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
-
                     cmd.Parameters.AddWithValue("@Action", "GETBYID");
                     cmd.Parameters.AddWithValue("@Id", id);
 
                     await con.OpenAsync();
-
                     using (SqlDataReader reader = await cmd.ExecuteReaderAsync())
                     {
                         if (await reader.ReadAsync())
                         {
                             model = new StatePrabhariModel
                             {
-                                Id = Convert.ToInt32(reader["Id"]),
-                                State = Convert.ToInt32(reader["State"]),
-                                PrabhariName = reader["PrabhariName"]?.ToString(),
-                                Email = reader["Email"]?.ToString(),
-                                PhoneNo = reader["PhoneNo"]?.ToString(),
-                                Category = Convert.ToInt32(reader["Category"]),
-                                SubCaste = Convert.ToInt32(reader["SubCaste"]),
-                                Education = reader["Education"]?.ToString(),
-                                Profession = reader["Profession"]?.ToString(),
-                                Profile = reader["Profile"]?.ToString(),
-                                Address = reader["Address"]?.ToString()
+                                Id = reader.GetInt32Safe("Id"),
+                                State = reader.GetNullableInt32Safe("State"),
+                                PrabhariName = reader.GetStringSafe("PrabhariName"),
+                                Email = reader.GetStringSafe("Email"),
+                                PhoneNo = reader.GetStringSafe("PhoneNo"),
+                                Category = reader.GetNullableInt32Safe("Category"),
+                                SubCaste = reader.GetNullableInt32Safe("SubCaste"),
+                                Education = reader.GetStringSafe("Education"),
+                                Profession = reader.GetStringSafe("Profession"),
+                                Profile = reader.GetStringSafe("Profile"),
+                                Address = reader.GetStringSafe("Address")
                             };
                         }
                     }
                 }
-            }
-            catch (SqlException sqlEx)
-            {
-                throw new Exception($"Database error while fetching StatePrabhari with Id={id}", sqlEx);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Unexpected error while fetching StatePrabhari with Id={id}", ex);
-            }
-
-            return model;
+                return model;
+            });
         }
 
-
         public async Task<int> SaveStatePrabhariAsync(StatePrabhariModel model)
+        
         {
-            try
+            return await ExecuteAsync(async () =>
             {
                 using (SqlConnection con = new SqlConnection(conn))
                 using (SqlCommand cmd = new SqlCommand("sp_StatePrabhari", con))
@@ -1307,22 +997,15 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     cmd.CommandType = CommandType.StoredProcedure;
 
                     string generatedPassword = null;
-
                     bool isNew = model.Id == 0;
 
                     if (isNew)
                     {
-                        generatedPassword = PasswordGenerator.GeneratePassword(
-                            model.PrabhariName,
-                            model.PhoneNo
-                        );
+                        generatedPassword = PasswordGenerator.GeneratePassword(model.PrabhariName, model.PhoneNo);
                     }
 
-                    cmd.Parameters.AddWithValue("@Action",
-                        isNew ? "ADD" : "UPDATE");
-
+                    cmd.Parameters.AddWithValue("@Action", isNew ? "ADD" : "UPDATE");
                     cmd.Parameters.AddWithValue("@Id", model.Id);
-
                     cmd.Parameters.AddWithValue("@State", (object)model.State ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@PrabhariName", (object)model.PrabhariName ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@Email", (object)model.Email ?? DBNull.Value);
@@ -1333,151 +1016,40 @@ namespace GlobalVidhanSabha.Models.AdminMain
                     cmd.Parameters.AddWithValue("@Profession", (object)model.Profession ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@Profile", (object)model.Profile ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@Address", (object)model.Address ?? DBNull.Value);
-
-                    // LOGIN PARAMETERS
-                    cmd.Parameters.AddWithValue("@UserName",
-                        (object)model.Email ?? DBNull.Value);
-
-                    cmd.Parameters.AddWithValue("@Password",
-                        (object)generatedPassword ?? DBNull.Value);
-
-                    cmd.Parameters.AddWithValue("@Role",
-                        "StatePrabhari");
+                    cmd.Parameters.AddWithValue("@UserName", (object)model.Email ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Password", (object)generatedPassword ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Role", "StatePrabhari");
 
                     await con.OpenAsync();
+                    object result = await cmd.ExecuteScalarAsync();
+                    int newId = (result != null && result != DBNull.Value) ? Convert.ToInt32(result) : 0;
 
-                    int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
-
-                    // Send email only for new user
                     if (isNew && newId > 0)
                     {
-                        await EmailService.SendLoginEmailAsync(
-                            model.Email,
-                            model.Email,
-                            generatedPassword
-                        );
+                        await EmailService.SendLoginEmailAsync(model.Email, model.PhoneNo, generatedPassword);
                     }
 
                     return newId;
                 }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.Message);
-            }
+            });
         }
-
-
-
-        //public async Task<int> SaveStatePrabhariAsync(StatePrabhariModel model)
-        //{
-        //    try
-        //    {
-        //        using (var con = new SqlConnection(conn))
-        //        using (var cmd = new SqlCommand("sp_StatePrabhari", con))
-        //        {
-        //            cmd.CommandType = CommandType.StoredProcedure;
-
-        //            bool isNew = model.Id == 0;
-
-        //            // Determine action
-        //            if (isNew)
-        //            {
-        //                cmd.Parameters.AddWithValue("@Action", "ADD");
-        //            }
-        //            else
-        //            {
-        //                cmd.Parameters.AddWithValue("@Action", "UPDATE");
-        //                cmd.Parameters.AddWithValue("@Id", model.Id);
-        //            }
-
-        //            // Parameters
-        //            cmd.Parameters.AddWithValue("@PrabhariName", model.PrabhariName ?? "");
-        //            cmd.Parameters.AddWithValue("@Email", model.Email ?? "");
-        //            cmd.Parameters.AddWithValue("@PhoneNo", model.PhoneNo ?? "");
-        //            cmd.Parameters.AddWithValue("@State", model.State ?? (object)DBNull.Value);
-        //            cmd.Parameters.AddWithValue("@Category", model.Category ?? (object)DBNull.Value);
-        //            cmd.Parameters.AddWithValue("@SubCaste", model.SubCaste ?? (object)DBNull.Value);
-        //            cmd.Parameters.AddWithValue("@Education", model.Education ?? (object)DBNull.Value);
-        //            cmd.Parameters.AddWithValue("@Profession", model.Profession ?? (object)DBNull.Value);
-        //            cmd.Parameters.AddWithValue("@Profile", model.Profile ?? (object)DBNull.Value);
-        //            cmd.Parameters.AddWithValue("@Address", model.Address ?? (object)DBNull.Value);
-
-        //            await con.OpenAsync();
-
-        //            object result = await cmd.ExecuteScalarAsync();
-
-        //            int newId = isNew
-        //                ? (result != null && result != DBNull.Value ? Convert.ToInt32(result) : 0)
-        //                : model.Id;
-
-        //            // ✅ SEND EMAIL ONLY WHEN NEW USER CREATED
-        //            if (isNew)
-        //            {
-        //                string username = model.Email;
-
-        //                // Generate Password
-        //                string password = PasswordGenerator.GeneratePassword(
-        //                    model.PrabhariName,
-        //                    model.PhoneNo
-        //                );
-
-        //                // Send Email
-        //                await EmailService.SendLoginEmailAsync(
-        //                    model.Email,
-        //                    username,
-        //                    password
-        //                );
-        //            }
-
-        //            return newId;
-        //        }
-        //    }
-        //    catch (SqlException sqlEx)
-        //    {
-        //        string action = model.Id > 0 ? "updating" : "adding";
-        //        throw new Exception($"Database error while {action} StatePrabhari: {sqlEx.Message}", sqlEx);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        string action = model.Id > 0 ? "updating" : "adding";
-        //        throw new Exception($"Unexpected error while {action} StatePrabhari: {ex.Message}", ex);
-        //    }
-        //}
-
-
-
 
         public async Task<bool> DeleteStatePrabhariAsync(int id)
         {
-            try
+            return await ExecuteAsync(async () =>
             {
-                using (var con = new SqlConnection(conn))
-                using (var cmd = new SqlCommand("sp_StatePrabhari", con))
+                using (SqlConnection con = new SqlConnection(conn))
+                using (SqlCommand cmd = new SqlCommand("sp_StatePrabhari", con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
-
                     cmd.Parameters.AddWithValue("@Action", "DELETE");
                     cmd.Parameters.AddWithValue("@Id", id);
 
                     await con.OpenAsync();
-
                     int rowsAffected = await cmd.ExecuteNonQueryAsync();
-
                     return rowsAffected > 0;
                 }
-            }
-            catch (SqlException sqlEx)
-            {
-                // database related error
-                throw new Exception($"Database error while deleting StatePrabhari with Id={id}", sqlEx);
-            }
-            catch (Exception ex)
-            {
-                // general error
-                throw new Exception($"Unexpected error while deleting StatePrabhari with Id={id}", ex);
-            }
+            });
         }
     }
 }
-
